@@ -141,6 +141,15 @@ label.f input,label.f select,.txt{border:1px solid var(--line-s);border-radius:1
 .cabin-edit.fadein{animation:fadein .7s ease both}
 @keyframes fadein{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 .ce-h{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.sync{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:500}
+.sync .dot{width:8px;height:8px;border-radius:50%;background:#9aa0a6;flex:none}
+.sync[data-kind=ok] .dot{background:#2e9d5b}
+.sync[data-kind=saving] .dot{background:var(--ac);animation:pulse 1s ease-in-out infinite}
+.sync[data-kind=err] .dot{background:#c0392b}
+.sync[data-kind=err]{color:#a3342b}
+@keyframes pulse{50%{opacity:.3}}
+.toast{position:fixed;left:50%;top:16px;transform:translate(-50%,-16px);opacity:0;z-index:100;background:#111;color:#fff;padding:11px 16px;border-radius:12px;font-size:14px;transition:.25s;pointer-events:none;max-width:calc(100vw - 32px);box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
 .tcol{display:grid;gap:3px;justify-items:start}
 .room-edit .stepper{height:38px}
 .room-edit .txt{padding:8px 10px}
@@ -174,6 +183,9 @@ label.f input,label.f select,.txt{border:1px solid var(--line-s);border-radius:1
   .nav{flex-wrap:nowrap;margin-top:12px;padding:8px 8px 8px 14px;border-radius:16px}
   .nav img{height:24px}
   .navnew{display:none}
+  .sync #syncTxt{display:none}
+  .sync{padding:9px 11px}
+  .actions{flex-wrap:nowrap}
   .herotext{bottom:26px;left:14px;right:14px}
   .herotext .box{padding:12px 18px 14px;border-radius:18px}
   .herotext h1{font-size:34px}
@@ -225,6 +237,7 @@ label.f input,label.f select,.txt{border:1px solid var(--line-s);border-radius:1
     <nav class="nav glass">
       <img src="logo.svg" alt="Efjord &amp; Stetind Resort">
       <div class="actions">
+        <button class="btn ghost sync" id="sync" data-action="sync" data-kind="loading" title="Synkronisering"><i class="dot"></i><span id="syncTxt">Henter…</span></button>
         <button class="btn ghost" data-action="setup"><span class="t-long">Rediger hytter</span><span class="t-short">Hytter</span></button>
         <button class="btn primary navnew" data-action="new">+ Ny reservasjon</button>
       </div>
@@ -254,6 +267,8 @@ label.f input,label.f select,.txt{border:1px solid var(--line-s);border-radius:1
 <button class="btn primary fab" data-action="new">+ Ny reservasjon</button>
 <dialog id="bookDlg"></dialog>
 <dialog id="setupDlg"></dialog>
+<dialog id="unlockDlg"></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 (() => {
@@ -294,7 +309,87 @@ function load() {
   try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.cabins) && Array.isArray(s.bookings)) return s; } catch (e) {}
   return seed();
 }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+function cacheLocal() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+function save() { cacheLocal(); queueSave(); }
+
+/* ---------- delt lagring i GitHub (branch «data») ---------- */
+const REPO = 'Pettersommerseth1994/efjord-stetind-resort', BRANCH = 'data', FILE = 'data.json';
+const API = `https://api.github.com/repos/${REPO}/contents/${FILE}`;
+const TKEY = 'efjord-stetind-token';
+let token = (() => { try { return localStorage.getItem(TKEY) || ''; } catch (e) { return ''; } })();
+let remoteSha = null, lastWrite = 0, saving = false, pending = false, saveTimer = null, needsRender = false;
+const seenShas = new Set();
+const b64enc = str => { let bin = ''; new TextEncoder().encode(str).forEach(b => bin += String.fromCharCode(b)); return btoa(bin); };
+const b64dec = b64 => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, '')), c => c.charCodeAt(0)));
+const ghHeaders = () => Object.assign({ Accept: 'application/vnd.github+json' }, token ? { Authorization: 'Bearer ' + token } : {});
+function setSync(kind, text) { const el = $('#sync'); if (!el) return; el.dataset.kind = kind; $('#syncTxt').textContent = text; el.title = text; }
+function syncIdle() { setSync(token ? 'ok' : 'view', token ? 'Synkronisert' : 'Kun visning'); }
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 5000); }
+function dropToken(msg) { token = ''; try { localStorage.removeItem(TKEY); } catch (e) {} syncIdle(); if (msg) toast(msg); }
+function applyRemote(data, sha) {
+  if (!data || !Array.isArray(data.cabins) || !Array.isArray(data.bookings)) return;
+  state = data; remoteSha = sha; seenShas.add(sha); cacheLocal();
+  if (document.querySelector('dialog[open]') || drag) needsRender = true; else render();
+}
+async function pull() {
+  if (saving || pending) return;
+  try {
+    const r = await fetch(`${API}?ref=${BRANCH}&t=${Date.now()}`, { headers: ghHeaders(), cache: 'no-store' });
+    if (r.status === 401 && token) { dropToken('Redigeringsnøkkelen er ugyldig eller utløpt.'); return pull(); }
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    if (saving || pending) return;
+    // rett etter egen lagring kan GitHub svare med en eldre, mellomlagret versjon – den ignoreres
+    if (j.sha !== remoteSha && (!seenShas.has(j.sha) || Date.now() - lastWrite > 120000)) applyRemote(JSON.parse(b64dec(j.content)), j.sha);
+    syncIdle();
+  } catch (e) { setSync('err', 'Frakoblet'); }
+}
+function queueSave() {
+  if (!token) return;
+  pending = true; setSync('saving', 'Lagrer…');
+  clearTimeout(saveTimer); saveTimer = setTimeout(flush, 500);
+}
+async function flush() {
+  if (saving || !pending) return;
+  saving = true; pending = false;
+  try {
+    const body = { message: 'Oppdater reservasjoner', content: b64enc(JSON.stringify(state, null, 1)), branch: BRANCH };
+    if (remoteSha) body.sha = remoteSha;
+    const r = await fetch(API, { method: 'PUT', headers: Object.assign(ghHeaders(), { 'Content-Type': 'application/json' }), body: JSON.stringify(body) });
+    if (r.ok) { const j = await r.json(); remoteSha = j.content.sha; seenShas.add(remoteSha); lastWrite = Date.now(); syncIdle(); }
+    else if (r.status === 409 || r.status === 422) { saving = false; await pull(); toast('Noen andre lagret samtidig. Siden er oppdatert – gjør endringen på nytt.'); }
+    else if (r.status === 401 || r.status === 403) dropToken('Nøkkelen har ikke skrivetilgang eller er utløpt. Endringen ble ikke lagret.');
+    else throw new Error(r.status);
+  } catch (e) { pending = true; setSync('err', 'Ikke lagret – trykk for å prøve igjen'); }
+  finally { saving = false; if (pending && token && $('#sync').dataset.kind !== 'err') flush(); }
+}
+function requireEdit() { if (token) return true; openUnlock(); return false; }
+function openUnlock() {
+  const dlg = $('#unlockDlg');
+  dlg.innerHTML = `<form id="unlockForm" novalidate><div class="dh1"><h2>Lås opp redigering</h2><button type="button" class="x" data-close aria-label="Lukk">×</button></div>
+    <div class="db"><p style="margin:0;color:var(--muted)">Alle med lenken kan se oversikten. For å gjøre endringer limer du inn redigeringsnøkkelen én gang på denne enheten. Spør den som delte lenken om nøkkelen.</p>
+      <label class="f">Redigeringsnøkkel<input class="txt" id="uTok" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…"></label>
+      <div class="err" id="uErr" hidden></div></div>
+    <div class="df"><button type="button" class="btn" data-close>Avbryt</button><button type="submit" class="btn primary">Lås opp</button></div></form>`;
+  $('#unlockForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const t = $('#uTok').value.trim(), err = m => { const x = $('#uErr'); x.textContent = m; x.hidden = false; };
+    if (!t) return err('Lim inn nøkkelen.');
+    try {
+      const r = await fetch(`https://api.github.com/repos/${REPO}`, { headers: { Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + t }, cache: 'no-store' });
+      if (!r.ok) return err('Nøkkelen ble ikke godtatt. Sjekk at den er riktig og ikke utløpt.');
+    } catch (x) { return err('Fikk ikke kontakt med GitHub. Prøv igjen.'); }
+    token = t; try { localStorage.setItem(TKEY, t); } catch (x) {}
+    dlg.close(); syncIdle(); toast('Redigering er låst opp på denne enheten.'); pull();
+  });
+  dlg.showModal(); $('#uTok').focus();
+}
+function syncClick() {
+  const k = $('#sync').dataset.kind;
+  if (k === 'view') return openUnlock();
+  if (k === 'err') { if (pending) { setSync('saving', 'Lagrer…'); return flush(); } return pull(); }
+  if (k === 'ok' && confirm('Redigering er låst opp på denne enheten. Vil du låse den igjen (fjerne nøkkelen herfra)?')) dropToken('Redigering er låst på denne enheten.');
+}
 
 /* ---------- helpers ---------- */
 const isDbl = (r, n) => !!r.types && r.types[n] === 'd';
@@ -501,6 +596,7 @@ function paint(d) {
 
 /* ---------- booking dialog ---------- */
 function openBooking(p) {
+  if (!requireEdit()) return;
   const bm = bedMap();
   const beds = allBeds();
   if (!beds.length) { alert('Legg først til hytter, rom og senger.'); return; }
@@ -547,8 +643,9 @@ function openBooking(p) {
     if (si < 0 || ei > N || si >= N) return err('Datoene må ligge mellom 1. juli og 31. august (utsjekk kan være 1. september).');
     if (ei <= si) return err('Utsjekk må være etter innsjekk.');
     if (overlaps(bed, si, ei, p.id)) return err('Sengen er allerede reservert i hele eller deler av perioden.');
-    if (p.id) Object.assign(state.bookings.find(b => b.id === p.id), { guest, bed, start: s, end: en, paid });
-    else state.bookings.push({ id: uid(), guest, bed, start: s, end: en, paid });
+    const cur = p.id && state.bookings.find(b => b.id === p.id);
+    if (cur) Object.assign(cur, { guest, bed, start: s, end: en, paid });
+    else state.bookings.push({ id: p.id || uid(), guest, bed, start: s, end: en, paid });
     save(); dlg.close(); render();
   });
   const del = $('#bDel');
@@ -567,6 +664,7 @@ function firstFreeBed() {
 /* ---------- setup dialog ---------- */
 let draft = null;
 function openSetup() {
+  if (!requireEdit()) return;
   draft = JSON.parse(JSON.stringify(state.cabins)); draft.forEach(c => c.rooms.forEach(ensureTypes));
   renderSetup();
   $('#setupDlg').showModal();
@@ -636,11 +734,13 @@ document.addEventListener('click', e => {
   const d = t.dataset;
   if (d.action === 'new') return openBooking({ guest: '', bed: firstFreeBed(), start: '2027-08-06', end: '2027-08-08' });
   if (d.action === 'setup') return openSetup();
+  if (d.action === 'sync') return syncClick();
   if (d.view) { view = d.view; return render(); }
   if (d.jump !== undefined) { const sc = $('.tl-scroll'); if (sc) sc.scrollTo({ left: Math.max(0, (+d.jump - (+d.jump ? 0 : 0)) * cellW()), behavior: 'smooth' }); return; }
   if (d.edit) { const b = state.bookings.find(x => x.id === d.edit); if (b) openBooking({ ...b }); return; }
   if (d.newbed) return openBooking({ guest: '', bed: d.newbed, start: '2027-08-06', end: '2027-08-08' });
   if (t.hasAttribute('data-close')) return t.closest('dialog').close();
+  if (d.payall !== undefined && !requireEdit()) return;
   if (d.payall !== undefined) { const gs = state.bookings.filter(b => b.guest.toLowerCase() === d.payall); const all = gs.every(isPaid); gs.forEach(b => b.paid = !all); save(); return render(); }
   if (t.hasAttribute('data-addcabin')) return setupStep('cabins', 1);
   if (d.delcabin !== undefined) {
@@ -651,7 +751,7 @@ document.addEventListener('click', e => {
   }
   if (d.step) return setupStep(d.step, +d.d);
   if (t.hasAttribute('data-savesetup')) return saveSetup();
-  if (t.hasAttribute('data-reset') && confirm('Tilbakestille alt til eksempeldataene? Dine egne endringer går tapt.')) { state = seed(); save(); $('#setupDlg').close(); render(); }
+  if (t.hasAttribute('data-reset') && confirm('Tilbakestille alt til eksempeldataene? Dette overskriver dataene for alle som bruker lenken.')) { state = seed(); save(); $('#setupDlg').close(); render(); }
 });
 document.addEventListener('input', e => {
   const t = e.target;
@@ -663,9 +763,14 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('change', e => {
   const id = e.target.dataset && e.target.dataset.paid; if (!id) return;
+  if (!token) { e.target.checked = !e.target.checked; return openUnlock(); }
   const b = state.bookings.find(x => x.id === id); if (b) { b.paid = e.target.checked; save(); render(); }
 });
+document.querySelectorAll('dialog').forEach(d => d.addEventListener('close', () => { if (needsRender) { needsRender = false; render(); } }));
 render();
+pull();
+(function poll() { setTimeout(() => { if (document.visibilityState === 'visible') pull(); poll(); }, token ? 20000 : 90000); })();
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pull(); });
 })();
 </script>
 </body>
