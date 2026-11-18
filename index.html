@@ -144,6 +144,17 @@ label.f input,label.f select,.txt{border:1px solid var(--line-s);border-radius:1
 .payline{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer}
 .payline:last-child{border-bottom:0}
 .payline:hover{background:rgba(17,18,20,.03)}
+.payline{align-items:center}
+.payline .chk{display:flex;align-items:center;padding-right:2px}
+.payline input,.chk2 input{width:18px;height:18px;accent-color:#111;cursor:pointer}
+.payline .pinfo{flex:1}
+.payline.paid{opacity:.55}
+.chk2{display:flex;gap:8px;align-items:center;font-weight:500;cursor:pointer}
+.types{display:flex;gap:6px;flex-wrap:wrap;margin:-2px 0 6px}
+.tt{border:1px solid var(--line-s);background:rgba(255,255,255,.7);border-radius:9px;padding:4px 10px;font-size:12.5px;cursor:pointer}
+.tt.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.bedrow.dbl .lab{box-shadow:inset 3px 0 0 rgba(17,18,20,.28)}
+.bedline .bn{width:auto;min-width:58px}
 .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 @media (max-width:640px){
   :root{--label:118px;--cw:28px}
@@ -208,9 +219,9 @@ const $ = s => document.querySelector(s);
 function seed() {
   return {
     cabins: [
-      { id:'c1', name:'Efjord', price:600, rooms:[ {id:'r1',name:'Rom 1',beds:4}, {id:'r2',name:'Rom 2',beds:2}, {id:'r3',name:'Rom 3',beds:2} ] },
-      { id:'c2', name:'Stetind', price:500, rooms:[ {id:'r4',name:'Rom 1',beds:4}, {id:'r5',name:'Rom 2',beds:4} ] },
-      { id:'c3', name:'Fjordbris', price:450, rooms:[ {id:'r6',name:'Rom 1',beds:2}, {id:'r7',name:'Rom 2',beds:2} ] }
+      { id:'c1', name:'Efjord', price:600, priceDouble:900, rooms:[ {id:'r1',name:'Rom 1',beds:4}, {id:'r2',name:'Rom 2',beds:2}, {id:'r3',name:'Rom 3',beds:2} ] },
+      { id:'c2', name:'Stetind', price:500, priceDouble:800, rooms:[ {id:'r4',name:'Rom 1',beds:4}, {id:'r5',name:'Rom 2',beds:4} ] },
+      { id:'c3', name:'Fjordbris', price:450, priceDouble:700, rooms:[ {id:'r6',name:'Rom 1',beds:1,types:['d']}, {id:'r7',name:'Rom 2',beds:2} ] }
     ],
     bookings: [
       { id:'b1', guest:'Petter',   bed:'r1:0', start:'2027-07-31', end:'2027-08-07' },
@@ -233,13 +244,24 @@ function load() {
 function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
 
 /* ---------- helpers ---------- */
+const isDbl = (r, n) => !!r.types && r.types[n] === 'd';
+function roomSlots(r) {
+  const o = [];
+  for (let n = 0; n < r.beds; n++) {
+    const k = r.id + ':' + n;
+    if (isDbl(r, n)) o.push({ n, dbl: true, slot: 0, key: k, sib: k + 'b' }, { n, dbl: true, slot: 1, key: k + 'b', sib: k });
+    else o.push({ n, dbl: false, slot: 0, key: k, sib: null });
+  }
+  return o;
+}
+const countSlots = c => c.rooms.reduce((a, r) => a + roomSlots(r).length, 0);
+const bedName = b => b.dbl ? `Dobbeltseng ${b.n + 1} · plass ${b.slot + 1}` : `Seng ${b.n + 1}`;
 function allBeds() {
   const out = [];
-  state.cabins.forEach(c => c.rooms.forEach(r => { for (let n = 0; n < r.beds; n++) out.push({ key: r.id + ':' + n, cabin: c, room: r, n }); }));
+  state.cabins.forEach(c => c.rooms.forEach(r => roomSlots(r).forEach(sl => out.push({ ...sl, cabin: c, room: r }))));
   return out;
 }
 const bedMap = () => Object.fromEntries(allBeds().map(b => [b.key, b]));
-const bedLabel = b => `${b.cabin.name} › ${b.room.name} › Seng ${b.n + 1}`;
 const occupied = (bed, i, ignore) => state.bookings.some(b => b.bed === bed && b.id !== ignore && idx(b.start) <= i && i < idx(b.end));
 function overlaps(bed, s, e, ignore) { return state.bookings.some(b => b.bed === bed && b.id !== ignore && idx(b.start) < e && s < idx(b.end)); }
 function color(name) {
@@ -249,8 +271,24 @@ function color(name) {
 }
 const colorStyle = n => { const c = color(n); return `background:${c.bg};border-color:${c.bd};color:${c.fg}`; };
 const price = c => +c.price || 0;
+const priceD = c => +c.priceDouble || 0;
+const hasType = (c, d) => c.rooms.some(r => roomSlots(r).some(s => s.dbl === d));
+function priceLabel(c, suf) {
+  const p = [];
+  if (hasType(c, false)) p.push(price(c) ? kr(price(c)) : 'pris ikke satt');
+  if (hasType(c, true)) p.push(priceD(c) ? 'dobbel ' + kr(priceD(c)) : 'dobbelpris ikke satt');
+  return p.join(' · ') + (p.length ? suf : '');
+}
 const kr = n => n.toLocaleString('nb-NO') + ' kr';
-function stayCost(b, bm) { const x = bm[b.bed]; return x ? nightsBetween(b.start, b.end) * price(x.cabin) : 0; }
+function stayCost(b, bm) {
+  const x = bm[b.bed]; if (!x) return 0;
+  const s = idx(b.start), e = idx(b.end);
+  if (!x.dbl) return (e - s) * price(x.cabin);
+  let sum = 0; const p = priceD(x.cabin);
+  for (let i = s; i < e; i++) sum += occupied(x.sib, i) ? p / 2 : p; // dobbeltseng: prisen deles når to bor der
+  return Math.round(sum);
+}
+const isPaid = b => !!b.paid;
 const nightsBetween = (a, b) => idx(b) - idx(a);
 
 /* ---------- render ---------- */
@@ -259,10 +297,13 @@ function render() {
   const si = idx(selDate);
   const busy = state.bookings.filter(b => idx(b.start) <= si && si < idx(b.end)).length;
   const rooms = state.cabins.reduce((a, c) => a + c.rooms.length, 0);
+  const bm0 = bedMap(), owed = { total: 0, paid: 0 };
+  state.bookings.forEach(b => { const c = stayCost(b, bm0); owed.total += c; if (isPaid(b)) owed.paid += c; });
+  owed.rest = owed.total - owed.paid;
   $('#stats').innerHTML = `
-    <div class="card"><div class="k">Anlegg</div><div class="v">${total} senger</div><div class="s">${state.cabins.length} hytter · ${rooms} rom</div></div>
+    <div class="card"><div class="k">Anlegg</div><div class="v">${total} senger</div><div class="s">${state.cabins.length} hytter · ${rooms} rom${beds.some(b => b.dbl) ? ' · ' + beds.filter(b => b.dbl && b.slot === 0).length + (beds.filter(b => b.dbl && b.slot === 0).length === 1 ? ' dobbeltseng' : ' dobbeltsenger') : ''}</div></div>
     <div class="card"><div class="k">Reservasjoner</div><div class="v">${state.bookings.length}</div><div class="s">${new Set(state.bookings.map(b => b.guest.toLowerCase())).size} gjester totalt</div></div>
-    <div class="card"><div class="k">Totalt å betale</div><div class="v">${kr(state.bookings.reduce((a, b) => a + stayCost(b, bedMap()), 0))}</div><div class="s">Se fanen Oppgjør</div></div>
+    <div class="card"><div class="k">Gjenstår å betale</div><div class="v">${kr(owed.rest)}</div><div class="s">${kr(owed.paid)} betalt av ${kr(owed.total)} · se Oppgjør</div></div>
     <div class="card"><div class="k">Belegg natt til</div>
       <div class="datepick"><input type="date" id="selDate" value="${selDate}" min="${iso(0)}" max="${iso(N-1)}"></div>
       <div class="v" style="font-size:20px;margin-top:6px">${busy} av ${total} belagt · ${total - busy} ledige</div>
@@ -292,11 +333,11 @@ function renderTimeline() {
       <div class="row freerow"><div class="lab">Ledige senger</div><div class="free">${fr}</div></div>
     </div>`;
   state.cabins.forEach(c => {
-    const nb = c.rooms.reduce((a, r) => a + r.beds, 0);
-    h += `<div class="row"><div class="cabin-h"><span class="ct">${esc(c.name)} <small>${c.rooms.length} rom · ${nb} senger · ${price(c) ? kr(price(c)) + ' per seng/natt' : 'pris ikke satt'}</small></span></div></div>`;
+    const nb = countSlots(c);
+    h += `<div class="row"><div class="cabin-h"><span class="ct">${esc(c.name)} <small>${c.rooms.length} rom · ${nb} senger · ${priceLabel(c, ' per natt')}</small></span></div></div>`;
     c.rooms.forEach(r => {
-      for (let n = 0; n < r.beds; n++) {
-        const key = r.id + ':' + n;
+      roomSlots(r).forEach((sl, k) => {
+        const key = sl.key;
         let cells = '';
         for (let i = 0; i < N; i++) {
           const d = new Date(START + i * 864e5), wd = d.getUTCDay();
@@ -309,8 +350,8 @@ function renderTimeline() {
           if (ce <= cs) return;
           bars += `<div class="res ${s >= 0 ? 'l' : ''} ${e <= N ? 'r' : ''}" data-edit="${b.id}" style="grid-column:${cs + 1}/${ce + 1};${colorStyle(b.guest)}" title="${esc(b.guest)} · ${fmt(b.start)} – ${fmt(b.end)} (${e - s} netter)">${esc(b.guest)}<span style="font-weight:500;margin-left:6px;opacity:.8">${fmt(b.start)}–${fmt(b.end)}</span></div>`;
         });
-        h += `<div class="row bedrow ${n === 0 ? 'roomstart' : ''}"><div class="lab">${n === 0 ? `<b>${esc(r.name)}</b>` : '<b style="visibility:hidden">·</b>'}<span>Seng ${n + 1}</span></div><div class="days" data-bed="${key}">${cells}${bars}</div></div>`;
-      }
+        h += `<div class="row bedrow ${k === 0 ? 'roomstart' : ''} ${sl.dbl ? 'dbl' : ''}"><div class="lab">${k === 0 ? `<b>${esc(r.name)}</b>` : '<b style="visibility:hidden">·</b>'}<span>${bedName(sl)}</span></div><div class="days" data-bed="${key}">${cells}${bars}</div></div>`;
+      });
     });
   });
   h += '</div>';
@@ -324,18 +365,18 @@ const cellW = () => { const d = document.querySelector('.days'); return d ? d.ge
 function renderWho() {
   let h = '<div class="cabins">';
   state.cabins.forEach(c => {
-    const nb = c.rooms.reduce((a, r) => a + r.beds, 0);
-    h += `<article class="cabin-card"><h3>${esc(c.name)} <small>${nb} senger · ${price(c) ? kr(price(c)) + '/natt' : 'pris ikke satt'}</small></h3>`;
+    const nb = countSlots(c);
+    h += `<article class="cabin-card"><h3>${esc(c.name)} <small>${nb} senger · ${priceLabel(c, ' per natt')}</small></h3>`;
     c.rooms.forEach(r => {
-      h += `<div class="room"><h4><span>${esc(r.name)}</span><span>${r.beds} senger</span></h4>`;
-      for (let n = 0; n < r.beds; n++) {
-        const key = r.id + ':' + n;
+      h += `<div class="room"><h4><span>${esc(r.name)}</span><span>${roomSlots(r).length} senger</span></h4>`;
+      roomSlots(r).forEach(sl => {
+        const key = sl.key;
         const bs = state.bookings.filter(b => b.bed === key).sort((a, b) => a.start.localeCompare(b.start));
-        h += `<div class="bedline"><span class="bn">Seng ${n + 1}</span>`;
+        h += `<div class="bedline"><span class="bn">${bedName(sl)}</span>`;
         bs.forEach(b => { h += `<button class="chip" data-edit="${b.id}" style="${colorStyle(b.guest)}">${esc(b.guest)} <small>${fmt(b.start)} – ${fmt(b.end)}</small></button>`; });
         h += bs.length ? `<button class="openbed" data-newbed="${key}">+ legg til</button>` : `<button class="openbed" data-newbed="${key}">Ledig · reserver</button>`;
         h += '</div>';
-      }
+      });
       h += '</div>';
     });
     h += '</article>';
@@ -345,26 +386,32 @@ function renderWho() {
 
 function renderPay() {
   const bm = bedMap(), groups = new Map();
-  state.bookings.forEach(b => { const k = b.guest.toLowerCase(); if (!groups.has(k)) groups.set(k, { name: b.guest, stays: [] }); groups.get(k).stays.push(b); });
+  state.bookings.forEach(b => { const k = b.guest.toLowerCase(); if (!groups.has(k)) groups.set(k, { key: k, name: b.guest, stays: [] }); groups.get(k).stays.push(b); });
   const list = [...groups.values()].map(g => {
     g.stays.sort((a, b) => a.start.localeCompare(b.start));
     g.nights = g.stays.reduce((a, b) => a + nightsBetween(b.start, b.end), 0);
     g.sum = g.stays.reduce((a, b) => a + stayCost(b, bm), 0);
+    g.paid = g.stays.filter(isPaid).reduce((a, b) => a + stayCost(b, bm), 0);
+    g.rest = g.sum - g.paid;
     return g;
-  }).sort((a, b) => b.sum - a.sum || a.name.localeCompare(b.name, 'nb'));
-  const total = list.reduce((a, g) => a + g.sum, 0);
-  const unpriced = state.cabins.filter(c => !price(c)).map(c => c.name);
-  let h = `<div class="paytop card"><div><div class="k">Totalt for alle</div><div class="v">${kr(total)}</div></div>
-    <div class="s">${list.length} gjester · ${list.reduce((a, g) => a + g.nights, 0)} sengenetter</div></div>`;
-  if (unpriced.length) h += `<p class="hint" style="margin:0 0 12px">Pris mangler for ${unpriced.map(esc).join(', ')}. Legg inn pris per seng per natt under «Rediger hytter».</p>`;
+  }).sort((a, b) => b.rest - a.rest || b.sum - a.sum || a.name.localeCompare(b.name, 'nb'));
+  const total = list.reduce((a, g) => a + g.sum, 0), paid = list.reduce((a, g) => a + g.paid, 0);
+  const unpriced = state.cabins.filter(c => (hasType(c, false) && !price(c)) || (hasType(c, true) && !priceD(c))).map(c => c.name);
+  let h = `<div class="paytop card"><div><div class="k">Gjenstår å betale</div><div class="v">${kr(total - paid)}</div></div>
+    <div class="s" style="text-align:right">${kr(paid)} betalt av ${kr(total)}<br>${list.length} gjester · ${list.reduce((a, g) => a + g.nights, 0)} sengenetter</div></div>`;
+  if (unpriced.length) h += `<p class="hint" style="margin:0 0 12px">Pris mangler for ${unpriced.map(esc).join(', ')}. Legg inn pris under «Rediger hytter».</p>`;
   h += '<div class="cabins">';
   list.forEach(g => {
-    h += `<article class="cabin-card"><h3><span class="chip" style="${colorStyle(g.name)};cursor:default;font-size:15px">${esc(g.name)}</span><span style="font-size:22px">${kr(g.sum)}</span></h3><div class="room">`;
+    const all = g.stays.every(isPaid);
+    h += `<article class="cabin-card"><h3><span class="chip" style="${colorStyle(g.name)};cursor:default;font-size:15px">${esc(g.name)}</span>
+      <span style="text-align:right"><span style="font-size:22px">${g.rest ? kr(g.rest) : (all && g.sum ? 'Betalt ✓' : kr(0))}</span>${g.paid && g.rest ? `<br><small>${kr(g.paid)} betalt av ${kr(g.sum)}</small>` : ''}</span></h3><div class="room">`;
     g.stays.forEach(b => {
       const x = bm[b.bed], n = nightsBetween(b.start, b.end);
-      h += `<div class="payline" data-edit="${b.id}" role="button" tabindex="0"><div><b>${x ? esc(x.cabin.name) : '?'}</b> <span class="hint">${x ? esc(x.room.name) + ' · Seng ' + (x.n + 1) : ''}</span><br><span class="hint">${fmt(b.start)} – ${fmt(b.end)} · ${n} ${n === 1 ? 'natt' : 'netter'}${x ? ' × ' + kr(price(x.cabin)) : ''}</span></div><b>${kr(stayCost(b, bm))}</b></div>`;
+      const rate = x ? (x.dbl ? 'dobbeltseng ' + kr(priceD(x.cabin)) + (occupied(x.sib, idx(b.start)) ? ' (delt)' : '') : kr(price(x.cabin))) : '';
+      h += `<div class="payline ${isPaid(b) ? 'paid' : ''}"><label class="chk" title="Marker som betalt"><input type="checkbox" data-paid="${b.id}" ${isPaid(b) ? 'checked' : ''}></label>
+        <div class="pinfo" data-edit="${b.id}" role="button" tabindex="0"><b>${x ? esc(x.cabin.name) : '?'}</b> <span class="hint">${x ? esc(x.room.name) + ' · ' + bedName(x) : ''}</span><br><span class="hint">${fmt(b.start)} – ${fmt(b.end)} · ${n} ${n === 1 ? 'natt' : 'netter'}${rate ? ' × ' + rate : ''}</span></div><b>${kr(stayCost(b, bm))}</b></div>`;
     });
-    h += '</div></article>';
+    h += `<div style="padding-top:8px"><button class="btn sm" data-payall="${esc(g.key)}">${all ? 'Fjern betalt' : 'Marker alle som betalt'}</button></div></div></article>`;
   });
   $('#view').innerHTML = h + '</div>';
 }
@@ -409,7 +456,7 @@ function openBooking(p) {
   let opts = '', lastC = null;
   beds.forEach(b => {
     if (lastC !== b.cabin.id) { if (lastC) opts += '</optgroup>'; opts += `<optgroup label="${esc(b.cabin.name)}">`; lastC = b.cabin.id; }
-    opts += `<option value="${b.key}" ${b.key === bedKey ? 'selected' : ''}>${esc(b.room.name)} · Seng ${b.n + 1}</option>`;
+    opts += `<option value="${b.key}" ${b.key === bedKey ? 'selected' : ''}>${esc(b.room.name)} · ${bedName(b)}</option>`;
   });
   opts += '</optgroup>';
   const names = [...new Set(state.bookings.map(b => b.guest))];
@@ -424,6 +471,7 @@ function openBooking(p) {
         <label class="f">Utsjekk<input type="date" id="bEnd" value="${p.end}" min="${iso(1)}" max="${iso(N)}"></label>
       </div>
       <div class="nights" id="bNights"></div>
+      <label class="chk2"><input type="checkbox" id="bPaid" ${p.paid ? 'checked' : ''}> Betalt</label>
       <div class="err" id="bErr" hidden></div>
     </div>
     <div class="df">
@@ -431,12 +479,14 @@ function openBooking(p) {
       <button type="button" class="btn" data-close>Avbryt</button>
       <button type="submit" class="btn primary">Lagre</button>
     </div></form>`;
-  const upd = () => { const n = nightsBetween($('#bStart').value, $('#bEnd').value); const pr = bm[$('#bBed').value] ? price(bm[$('#bBed').value].cabin) : 0;
-    $('#bNights').textContent = n > 0 ? `${n} ${n === 1 ? 'natt' : 'netter'}` + (pr ? ` × ${kr(pr)} = ${kr(n * pr)}` : '') : ''; };
+  const upd = () => { const st = $('#bStart').value, en = $('#bEnd').value, n = nightsBetween(st, en), bed = bm[$('#bBed').value];
+    if (!(n > 0) || !bed) { $('#bNights').textContent = ''; return; }
+    const cost = stayCost({ bed: bed.key, start: st, end: en }, bm);
+    $('#bNights').textContent = `${n} ${n === 1 ? 'natt' : 'netter'}` + (cost ? ` · ${kr(cost)}` + (bed.dbl ? ' (dobbeltsengen deles på to når begge bor der)' : ` (${kr(price(bed.cabin))} per natt)`) : ''); };
   ['bStart', 'bEnd', 'bBed'].forEach(id => $('#' + id).addEventListener('input', upd)); upd();
   $('#bookForm').addEventListener('submit', e => {
     e.preventDefault();
-    const guest = $('#bGuest').value.trim(), bed = $('#bBed').value, s = $('#bStart').value, en = $('#bEnd').value;
+    const paid = $('#bPaid').checked, guest = $('#bGuest').value.trim(), bed = $('#bBed').value, s = $('#bStart').value, en = $('#bEnd').value;
     const err = m => { const x = $('#bErr'); x.textContent = m; x.hidden = false; };
     if (!guest) return err('Skriv inn et navn.');
     if (!s || !en) return err('Velg innsjekk og utsjekk.');
@@ -444,8 +494,8 @@ function openBooking(p) {
     if (si < 0 || ei > N || si >= N) return err('Datoene må ligge mellom 1. juli og 31. august (utsjekk kan være 1. september).');
     if (ei <= si) return err('Utsjekk må være etter innsjekk.');
     if (overlaps(bed, si, ei, p.id)) return err('Sengen er allerede reservert i hele eller deler av perioden.');
-    if (p.id) Object.assign(state.bookings.find(b => b.id === p.id), { guest, bed, start: s, end: en });
-    else state.bookings.push({ id: uid(), guest, bed, start: s, end: en });
+    if (p.id) Object.assign(state.bookings.find(b => b.id === p.id), { guest, bed, start: s, end: en, paid });
+    else state.bookings.push({ id: uid(), guest, bed, start: s, end: en, paid });
     save(); dlg.close(); render();
   });
   const del = $('#bDel');
@@ -464,26 +514,29 @@ function firstFreeBed() {
 /* ---------- setup dialog ---------- */
 let draft = null;
 function openSetup() {
-  draft = JSON.parse(JSON.stringify(state.cabins));
+  draft = JSON.parse(JSON.stringify(state.cabins)); draft.forEach(c => c.rooms.forEach(ensureTypes));
   renderSetup();
   $('#setupDlg').showModal();
 }
+function ensureTypes(r) { r.types = Array.from({ length: r.beds }, (_, i) => (r.types && r.types[i]) || 's'); }
 function renderSetup() {
   const dlg = $('#setupDlg');
-  const rooms = draft.reduce((a, c) => a + c.rooms.length, 0), beds = draft.reduce((a, c) => a + c.rooms.reduce((x, r) => x + r.beds, 0), 0);
+  const rooms = draft.reduce((a, c) => a + c.rooms.length, 0), beds = draft.reduce((a, c) => a + countSlots(c), 0);
   const step = (a, v) => `<span class="stepper"><button type="button" data-step="${a}" data-d="-1" aria-label="Færre">−</button><output>${v}</output><button type="button" data-step="${a}" data-d="1" aria-label="Flere">+</button></span>`;
   let h = `<div class="dh1"><h2>Hytter, rom og senger</h2><button type="button" class="x" data-close aria-label="Lukk">×</button></div><div class="db">
     <div class="setrow"><b>Antall hytter</b>${step('cabins', draft.length)}</div>`;
   draft.forEach((c, ci) => {
     h += `<div class="cabin-edit"><label class="f">Navn på hytte ${ci + 1}<input class="txt" data-name="${ci}" value="${esc(c.name)}"></label>
       <label class="f">Pris per seng per natt (kr)<input class="txt" type="number" min="0" step="10" inputmode="numeric" data-price="${ci}" value="${price(c)}"></label>
+      <label class="f">Pris dobbeltseng per natt (kr) – hele sengen, deles av de som bor der<input class="txt" type="number" min="0" step="10" inputmode="numeric" data-priced="${ci}" value="${priceD(c)}"></label>
       <div class="setrow"><b>Antall rom</b>${step('rooms:' + ci, c.rooms.length)}</div>`;
     c.rooms.forEach((r, ri) => {
-      h += `<div class="room-edit"><input class="txt" data-rname="${ci}:${ri}" value="${esc(r.name)}" aria-label="Navn på rom"><span class="setrow" style="gap:8px"><span class="hint">Senger</span>${step('beds:' + ci + ':' + ri, r.beds)}</span></div>`;
+      h += `<div class="room-edit"><input class="txt" data-rname="${ci}:${ri}" value="${esc(r.name)}" aria-label="Navn på rom"><span class="setrow" style="gap:8px"><span class="hint">Senger</span>${step('beds:' + ci + ':' + ri, r.beds)}</span></div>
+        <div class="types">${r.types.map((t, n) => `<button type="button" class="tt ${t === 'd' ? 'on' : ''}" data-toggle="${ci}:${ri}:${n}" title="Bytt mellom enkel og dobbel">Seng ${n + 1}: ${t === 'd' ? 'Dobbel' : 'Enkel'}</button>`).join('')}</div>`;
     });
     h += '</div>';
   });
-  h += `<div class="sum">Totalt: ${draft.length} hytter · ${rooms} rom · <b>${beds} senger</b></div></div>
+  h += `<div class="sum">Totalt: ${draft.length} hytter · ${rooms} rom · <b>${beds} sengeplasser</b> (dobbeltseng = 2 plasser)</div></div>
     <div class="df"><span class="sp"><button type="button" class="btn sm" data-export>Eksporter</button><button type="button" class="btn sm" data-import>Importer</button><button type="button" class="btn sm danger" data-reset>Tilbakestill til eksempel</button></span>
     <button type="button" class="btn" data-close>Avbryt</button><button type="button" class="btn primary" data-savesetup>Lagre endringer</button></div>`;
   dlg.innerHTML = h;
@@ -491,19 +544,19 @@ function renderSetup() {
 function setupStep(a, d) {
   const [t, x, y] = a.split(':');
   if (t === 'cabins') {
-    if (d > 0 && draft.length < 20) draft.push({ id: uid(), name: 'Hytte ' + (draft.length + 1), price: price(draft[draft.length - 1]), rooms: [{ id: uid(), name: 'Rom 1', beds: 2 }] });
+    if (d > 0 && draft.length < 20) draft.push({ id: uid(), name: 'Hytte ' + (draft.length + 1), price: price(draft[draft.length - 1]), priceDouble: priceD(draft[draft.length - 1]), rooms: [{ id: uid(), name: 'Rom 1', beds: 2, types: ['s', 's'] }] });
     if (d < 0 && draft.length > 1) draft.pop();
   } else if (t === 'rooms') {
     const c = draft[+x];
-    if (d > 0 && c.rooms.length < 12) c.rooms.push({ id: uid(), name: 'Rom ' + (c.rooms.length + 1), beds: 2 });
+    if (d > 0 && c.rooms.length < 12) c.rooms.push({ id: uid(), name: 'Rom ' + (c.rooms.length + 1), beds: 2, types: ['s', 's'] });
     if (d < 0 && c.rooms.length > 1) c.rooms.pop();
   } else if (t === 'beds') {
-    const r = draft[+x].rooms[+y]; r.beds = Math.min(12, Math.max(1, r.beds + d));
+    const r = draft[+x].rooms[+y]; r.beds = Math.min(12, Math.max(1, r.beds + d)); ensureTypes(r);
   }
   renderSetup();
 }
 function saveSetup() {
-  const keys = new Set(); draft.forEach(c => c.rooms.forEach(r => { for (let n = 0; n < r.beds; n++) keys.add(r.id + ':' + n); }));
+  const keys = new Set(); draft.forEach(c => c.rooms.forEach(r => roomSlots(r).forEach(sl => keys.add(sl.key))));
   draft.forEach(c => { c.name = c.name.trim() || 'Hytte'; c.rooms.forEach(r => r.name = r.name.trim() || 'Rom'); });
   const lost = state.bookings.filter(b => !keys.has(b.bed));
   if (lost.length && !confirm(`${lost.length} reservasjon(er) (${lost.map(b => b.guest).join(', ')}) ligger på senger som fjernes og blir slettet. Fortsette?`)) return;
@@ -522,6 +575,8 @@ document.addEventListener('click', e => {
   if (d.edit) { const b = state.bookings.find(x => x.id === d.edit); if (b) openBooking({ ...b }); return; }
   if (d.newbed) return openBooking({ guest: '', bed: d.newbed, start: '2027-08-06', end: '2027-08-08' });
   if (t.hasAttribute('data-close')) return t.closest('dialog').close();
+  if (d.toggle) { const [c, r, n] = d.toggle.split(':').map(Number); const rm = draft[c].rooms[r]; rm.types[n] = rm.types[n] === 'd' ? 's' : 'd'; return renderSetup(); }
+  if (d.payall !== undefined) { const gs = state.bookings.filter(b => b.guest.toLowerCase() === d.payall); const all = gs.every(isPaid); gs.forEach(b => b.paid = !all); save(); return render(); }
   if (d.step) return setupStep(d.step, +d.d);
   if (t.hasAttribute('data-savesetup')) return saveSetup();
   if (t.hasAttribute('data-export')) {
@@ -535,9 +590,14 @@ document.addEventListener('click', e => {
 document.addEventListener('input', e => {
   const t = e.target;
   if (t.id === 'selDate' && t.value) { selDate = t.value; render(); const i = $('#selDate'); i && i.focus(); }
+  if (t.dataset.priced !== undefined) draft[+t.dataset.priced].priceDouble = Math.max(0, +t.value || 0);
   if (t.dataset.price !== undefined) draft[+t.dataset.price].price = Math.max(0, +t.value || 0);
   if (t.dataset.name !== undefined) draft[+t.dataset.name].name = t.value;
   if (t.dataset.rname !== undefined) { const [c, r] = t.dataset.rname.split(':'); draft[+c].rooms[+r].name = t.value; }
+});
+document.addEventListener('change', e => {
+  const id = e.target.dataset && e.target.dataset.paid; if (!id) return;
+  const b = state.bookings.find(x => x.id === id); if (b) { b.paid = e.target.checked; save(); render(); }
 });
 $('#importFile').addEventListener('change', e => {
   const f = e.target.files[0]; if (!f) return;
