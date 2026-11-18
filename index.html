@@ -324,7 +324,7 @@ const b64dec = b64 => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(
 const ghHeaders = () => Object.assign({ Accept: 'application/vnd.github+json' }, token ? { Authorization: 'Bearer ' + token } : {});
 function setSync(kind, text) { const el = $('#sync'); if (!el) return; el.dataset.kind = kind; $('#syncTxt').textContent = text; el.title = text; }
 function syncIdle() { setSync(token ? 'ok' : 'view', token ? 'Synkronisert' : 'Kun visning'); }
-function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 5000); }
+function toast(msg, ms) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), ms || 5000); }
 function dropToken(msg) { token = ''; try { localStorage.removeItem(TKEY); } catch (e) {} syncIdle(); if (msg) toast(msg); }
 function applyRemote(data, sha) {
   if (!data || !Array.isArray(data.cabins) || !Array.isArray(data.bookings)) return;
@@ -358,7 +358,11 @@ async function flush() {
     const r = await fetch(API, { method: 'PUT', headers: Object.assign(ghHeaders(), { 'Content-Type': 'application/json' }), body: JSON.stringify(body) });
     if (r.ok) { const j = await r.json(); remoteSha = j.content.sha; seenShas.add(remoteSha); lastWrite = Date.now(); syncIdle(); }
     else if (r.status === 409 || r.status === 422) { saving = false; await pull(); toast('Noen andre lagret samtidig. Siden er oppdatert – gjør endringen på nytt.'); }
-    else if (r.status === 401 || r.status === 403) dropToken('Nøkkelen har ikke skrivetilgang eller er utløpt. Endringen ble ikke lagret.');
+    else if (r.status === 401) dropToken('Redigeringsnøkkelen er ugyldig eller utløpt. Lim inn en ny.');
+    else if (r.status === 403) { // nøkkelen virker, men mangler skrivetilgang – behold den og endringene
+      pending = true; setSync('err', 'Ikke lagret – mangler skrivetilgang');
+      toast('GitHub avviste lagringen: nøkkelen mangler skrivetilgang. Rediger nøkkelen på GitHub (repo efjord-stetind-resort, Contents: Read and write) og trykk på status-knappen for å prøve igjen.', 12000);
+    }
     else throw new Error(r.status);
   } catch (e) { pending = true; setSync('err', 'Ikke lagret – trykk for å prøve igjen'); }
   finally { saving = false; if (pending && token && $('#sync').dataset.kind !== 'err') flush(); }
@@ -378,6 +382,9 @@ function openUnlock() {
     try {
       const r = await fetch(`https://api.github.com/repos/${REPO}`, { headers: { Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + t }, cache: 'no-store' });
       if (!r.ok) return err('Nøkkelen ble ikke godtatt. Sjekk at den er riktig og ikke utløpt.');
+      // skrivetest: lager en tom, ubrukt blob (krever Contents: Read and write, endrer ingenting)
+      const w = await fetch(`https://api.github.com/repos/${REPO}/git/blobs`, { method: 'POST', headers: { Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ content: '', encoding: 'utf-8' }) });
+      if (!w.ok) return err('Nøkkelen kan lese, men ikke skrive. Rediger nøkkelen på GitHub: under «Repository access» må efjord-stetind-resort være valgt, og under «Permissions» må «Contents» stå på «Read and write». Du trenger ikke lage en ny nøkkel.');
     } catch (x) { return err('Fikk ikke kontakt med GitHub. Prøv igjen.'); }
     token = t; try { localStorage.setItem(TKEY, t); } catch (x) {}
     dlg.close(); syncIdle(); toast('Redigering er låst opp på denne enheten.'); pull();
