@@ -2,7 +2,7 @@
  "cabins": [
   {
    "id": "c1",
-   "name": "Efjord1",
+   "name": "Efjord",
    "price": 600,
    "priceDouble": 900,
    "rooms": [
