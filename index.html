@@ -2,7 +2,7 @@
 <html lang="nb">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Efjord & Stetind Resort – Romfordeling</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -66,7 +66,7 @@ button,input,select{font:inherit;color:inherit;letter-spacing:inherit}
 .tl-scroll{border-radius:20px;overflow:auto;max-height:min(74vh,900px);position:relative}
 .tl{width:max-content;min-width:100%}
 .row{display:grid;grid-template-columns:var(--label) calc(var(--cw)*62)}
-.lab{position:sticky;left:0;z-index:5;background:var(--glass-s);backdrop-filter:blur(14px);border-right:1px solid var(--line-s);padding:0 12px;display:flex;align-items:center;gap:6px;min-height:34px;font-size:13px}
+.lab{position:sticky;left:0;z-index:5;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);border-right:1px solid var(--line-s);padding:0 12px;display:flex;align-items:center;gap:6px;min-height:34px;font-size:13px}
 .lab b{font-weight:600}
 .lab span{color:var(--muted)}
 .thead{position:sticky;top:0;z-index:8;background:var(--glass-s);backdrop-filter:blur(16px)}
@@ -140,6 +140,7 @@ label.f input,label.f select,.txt{border:1px solid var(--line-s);border-radius:1
 .room-edit{display:grid;grid-template-columns:minmax(70px,.8fr) auto auto;gap:10px;align-items:end}
 .cabin-edit.fadein{animation:fadein .7s ease both}
 @keyframes fadein{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.ce-h{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .tcol{display:grid;gap:3px;justify-items:start}
 .room-edit .stepper{height:38px}
 .room-edit .txt{padding:8px 10px}
@@ -161,13 +162,60 @@ label.f input,label.f select,.txt{border:1px solid var(--line-s);border-radius:1
 .bedrow.dbl .lab{box-shadow:inset 3px 0 0 rgba(17,18,20,.28)}
 .bedline .bn{width:auto;min-width:58px}
 .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+.t-short,.h-touch,.fab{display:none}
+@media (hover:none){ .h-mouse{display:none} .h-touch{display:inline} }
 @media (max-width:640px){
-  :root{--label:118px;--cw:28px}
-  .lab{font-size:12px;padding:0 6px}
+  :root{--label:104px;--cw:30px}
+  .wrap{padding:0 14px calc(96px + env(safe-area-inset-bottom))}
+  .hero .wrap{padding-bottom:0}
+  .t-long{display:none} .t-short{display:inline}
+  /* hero + nav */
+  .hero{height:300px}
+  .nav{flex-wrap:nowrap;margin-top:12px;padding:8px 8px 8px 14px;border-radius:16px}
+  .nav img{height:24px}
+  .navnew{display:none}
+  .herotext{bottom:26px;left:14px;right:14px}
+  .herotext .box{padding:12px 18px 14px;border-radius:18px}
+  .herotext h1{font-size:34px}
+  .herotext p{font-size:13px;margin-top:4px}
+  /* floating CTA */
+  .fab{display:block;position:fixed;z-index:30;left:14px;right:14px;bottom:calc(12px + env(safe-area-inset-bottom));padding:14px;font-size:16px;border-radius:16px;box-shadow:0 10px 30px rgba(232,120,42,.4)}
+  /* stats 2x2 */
+  .stats{grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+  .stats .card:nth-child(n+3){grid-column:1/-1}
+  .stats .card:nth-child(3) .v{font-size:26px}
+  .card{padding:12px 14px;border-radius:16px}
+  .card .v{font-size:22px}
+  .card .s{font-size:12px}
+  /* tabs */
+  .toolbar{gap:8px}
+  .tabs{display:flex;width:100%}
+  .tabs button{flex:1;padding:9px 4px;white-space:nowrap;font-size:14px}
+  /* timeline */
+  .tl-scroll{max-height:70vh;border-radius:16px}
+  .lab{font-size:12px;padding:3px 8px;flex-wrap:wrap;column-gap:4px;row-gap:0;line-height:1.15}
+  .res{font-size:12px;padding:0 6px}
+  /* lists */
+  .cabins{grid-template-columns:1fr}
+  .paytop .v{font-size:28px}
+  /* forms: 16px avoids iOS zoom */
+  label.f input,label.f select,.txt,.datepick input{font-size:16px}
   .two{grid-template-columns:1fr}
-  .nav img{height:32px}
-  .herotext{bottom:36px}
+  /* dialogs as bottom sheets */
+  dialog{width:100%;max-width:100%;margin:auto 0 0;border-radius:22px 22px 0 0;max-height:94dvh}
+  dialog[open]{animation:sheet .28s cubic-bezier(.2,.8,.2,1)}
+  .dh1,.db,.df{padding-left:16px;padding-right:16px}
+  .df{padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+  .df .sp{width:100%}
+  .df .sp .btn[data-addcabin]{flex:1}
+  .df>.btn{flex:1;padding:12px}
+  .cabin-edit{padding:12px}
+  .room-edit{grid-template-columns:minmax(60px,1fr) auto auto;gap:6px}
+  .room-edit .stepper button{width:28px}
+  .room-edit .stepper output{min-width:22px}
+  .tcol .hint{font-size:11.5px}
 }
+@keyframes sheet{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 </style>
 </head>
 <body>
@@ -177,8 +225,8 @@ label.f input,label.f select,.txt{border:1px solid var(--line-s);border-radius:1
     <nav class="nav glass">
       <img src="logo.svg" alt="Efjord &amp; Stetind Resort">
       <div class="actions">
-        <button class="btn ghost" data-action="setup">Rediger hytter</button>
-        <button class="btn primary" data-action="new">+ Ny reservasjon</button>
+        <button class="btn ghost" data-action="setup"><span class="t-long">Rediger hytter</span><span class="t-short">Hytter</span></button>
+        <button class="btn primary navnew" data-action="new">+ Ny reservasjon</button>
       </div>
     </nav>
     <div class="herotext"><div class="box glass"><h1>Romfordeling</h1><p>Juli og august 2027 · hvem bor hvor</p></div></div>
@@ -189,7 +237,7 @@ label.f input,label.f select,.txt{border:1px solid var(--line-s);border-radius:1
   <section class="stats" id="stats"></section>
   <div class="toolbar">
     <div class="tabs" role="tablist">
-      <button role="tab" data-view="timeline">Belegg per seng</button>
+      <button role="tab" data-view="timeline"><span class="t-long">Belegg per seng</span><span class="t-short">Belegg</span></button>
       <button role="tab" data-view="who">Hvem bor hvor</button>
       <button role="tab" data-view="pay">Oppgjør</button>
     </div>
@@ -199,13 +247,13 @@ label.f input,label.f select,.txt{border:1px solid var(--line-s);border-radius:1
       <button class="btn sm" data-jump="31">August</button>
     </div>
   </div>
-  <p class="hint" id="hintline" style="margin:0 0 8px">Dra over ledige netter på en seng for å reservere. Klikk på en reservasjon for å endre eller slette. Hver kolonne er én natt; utsjekk er dagen etter siste natt.</p>
+  <p class="hint" id="hintline" style="margin:0 0 8px"><span class="h-mouse">Dra over ledige netter på en seng for å reservere. Klikk på en reservasjon for å endre eller slette. Hver kolonne er én natt; utsjekk er dagen etter siste natt.</span><span class="h-touch">Trykk på en ledig natt for å reservere, eller på en reservasjon for å endre den. Sveip sideveis for flere datoer.</span></p>
   <div id="view"></div>
 </main>
 
+<button class="btn primary fab" data-action="new">+ Ny reservasjon</button>
 <dialog id="bookDlg"></dialog>
 <dialog id="setupDlg"></dialog>
-<input type="file" id="importFile" accept="application/json" hidden>
 
 <script>
 (() => {
@@ -530,10 +578,10 @@ function renderSetup() {
   const oldDb = dlg.querySelector('.db'), keepTop = oldDb ? oldDb.scrollTop : 0;
   const rooms = draft.reduce((a, c) => a + c.rooms.length, 0), beds = draft.reduce((a, c) => a + countSlots(c), 0);
   const step = (a, v) => `<span class="stepper"><button type="button" data-step="${a}" data-d="-1" aria-label="Færre">−</button><output>${v}</output><button type="button" data-step="${a}" data-d="1" aria-label="Flere">+</button></span>`;
-  let h = `<div class="dh1"><h2>Hytter, rom og senger</h2><button type="button" class="x" data-close aria-label="Lukk">×</button></div><div class="db">
-    <div class="setrow"><b>Antall hytter</b>${step('cabins', draft.length)}</div>`;
+  let h = `<div class="dh1"><h2>Hytter, rom og senger</h2><button type="button" class="x" data-close aria-label="Lukk">×</button></div><div class="db">`;
   draft.forEach((c, ci) => {
-    h += `<div class="cabin-edit" data-ci="${ci}"><label class="f">Navn på hytte ${ci + 1}<input class="txt" data-name="${ci}" value="${esc(c.name)}"></label>
+    h += `<div class="cabin-edit" data-ci="${ci}"><div class="ce-h"><b>Hytte ${ci + 1}</b>${draft.length > 1 ? `<button type="button" class="btn sm danger" data-delcabin="${ci}">Fjern hytte</button>` : ''}</div>
+      <label class="f">Navn<input class="txt" data-name="${ci}" value="${esc(c.name)}"></label>
       <label class="f">Pris per seng per natt (kr)<input class="txt" type="number" min="0" step="10" inputmode="numeric" data-price="${ci}" value="${price(c)}"></label>
       <label class="f">Pris dobbeltseng per natt (kr) – hele sengen, deles av de som bor der<input class="txt" type="number" min="0" step="10" inputmode="numeric" data-priced="${ci}" value="${priceD(c)}"></label>
       <div class="setrow"><b>Antall rom</b>${step('rooms:' + ci, c.rooms.length)}</div>`;
@@ -546,7 +594,7 @@ function renderSetup() {
     h += '</div>';
   });
   h += `<div class="sum">Totalt: ${draft.length} hytter · ${rooms} rom · <b>${beds} sengeplasser</b> (dobbeltseng = 2 plasser)</div></div>
-    <div class="df"><span class="sp"><button type="button" class="btn sm" data-export>Eksporter</button><button type="button" class="btn sm" data-import>Importer</button><button type="button" class="btn sm danger" data-reset>Tilbakestill til eksempel</button></span>
+    <div class="df"><span class="sp"><button type="button" class="btn" data-addcabin>+ Legg til hytte</button><button type="button" class="btn sm danger" data-reset>Tilbakestill</button></span>
     <button type="button" class="btn" data-close>Avbryt</button><button type="button" class="btn primary" data-savesetup>Lagre endringer</button></div>`;
   dlg.innerHTML = h;
   const db = dlg.querySelector('.db');
@@ -560,7 +608,6 @@ function setupStep(a, d) {
   const [t, x, y] = a.split(':');
   if (t === 'cabins') {
     if (d > 0 && draft.length < 20) { justAdded = draft.length; draft.push({ id: uid(), name: 'Hytte ' + (draft.length + 1), price: price(draft[draft.length - 1]), priceDouble: priceD(draft[draft.length - 1]), rooms: [{ id: uid(), name: 'Rom 1', beds: 2, types: ['s', 's'] }] }); }
-    if (d < 0 && draft.length > 1) draft.pop();
   } else if (t === 'rooms') {
     const c = draft[+x];
     if (d > 0 && c.rooms.length < 12) c.rooms.push({ id: uid(), name: 'Rom ' + (c.rooms.length + 1), beds: 2, types: ['s', 's'] });
@@ -595,14 +642,15 @@ document.addEventListener('click', e => {
   if (d.newbed) return openBooking({ guest: '', bed: d.newbed, start: '2027-08-06', end: '2027-08-08' });
   if (t.hasAttribute('data-close')) return t.closest('dialog').close();
   if (d.payall !== undefined) { const gs = state.bookings.filter(b => b.guest.toLowerCase() === d.payall); const all = gs.every(isPaid); gs.forEach(b => b.paid = !all); save(); return render(); }
+  if (t.hasAttribute('data-addcabin')) return setupStep('cabins', 1);
+  if (d.delcabin !== undefined) {
+    const c = draft[+d.delcabin], keys = new Set(c.rooms.flatMap(r => roomSlots(r).map(sl => sl.key)));
+    const n = state.bookings.filter(b => keys.has(b.bed)).length;
+    if (confirm(`Fjerne hytta «${c.name}»?` + (n ? ` ${n} reservasjon(er) slettes når du lagrer.` : ''))) { draft.splice(+d.delcabin, 1); renderSetup(); }
+    return;
+  }
   if (d.step) return setupStep(d.step, +d.d);
   if (t.hasAttribute('data-savesetup')) return saveSetup();
-  if (t.hasAttribute('data-export')) {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }));
-    a.download = 'efjord-stetind-reservasjoner.json'; a.click(); return;
-  }
-  if (t.hasAttribute('data-import')) return $('#importFile').click();
   if (t.hasAttribute('data-reset') && confirm('Tilbakestille alt til eksempeldataene? Dine egne endringer går tapt.')) { state = seed(); save(); $('#setupDlg').close(); render(); }
 });
 document.addEventListener('input', e => {
@@ -616,17 +664,6 @@ document.addEventListener('input', e => {
 document.addEventListener('change', e => {
   const id = e.target.dataset && e.target.dataset.paid; if (!id) return;
   const b = state.bookings.find(x => x.id === id); if (b) { b.paid = e.target.checked; save(); render(); }
-});
-$('#importFile').addEventListener('change', e => {
-  const f = e.target.files[0]; if (!f) return;
-  f.text().then(txt => {
-    try {
-      const s = JSON.parse(txt);
-      if (!Array.isArray(s.cabins) || !Array.isArray(s.bookings)) throw 0;
-      if (confirm('Erstatte nåværende data med den importerte filen?')) { state = s; save(); $('#setupDlg').close(); render(); }
-    } catch (err) { alert('Kunne ikke lese filen.'); }
-  });
-  e.target.value = '';
 });
 render();
 })();
