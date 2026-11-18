@@ -368,34 +368,88 @@ async function flush() {
   finally { saving = false; if (pending && token && $('#sync').dataset.kind !== 'err') flush(); }
 }
 function requireEdit() { if (token) return true; openUnlock(); return false; }
+/* kort kode: nøkkelen krypteres i nettleseren med koden (PBKDF2 + AES-GCM) og lagres kryptert i data.json */
+const utf8 = new TextEncoder();
+const toB64 = buf => { let bin = ''; new Uint8Array(buf).forEach(b => bin += String.fromCharCode(b)); return btoa(bin); };
+const fromB64 = str => Uint8Array.from(atob(str), c => c.charCodeAt(0));
+const normCode = c => c.trim().toLowerCase();
+async function codeKey(code, salt, iter) {
+  const base = await crypto.subtle.importKey('raw', utf8.encode(normCode(code)), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: iter, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function lockToken(code, tok) {
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12)), iter = 600000;
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await codeKey(code, salt, iter), utf8.encode(tok));
+  return { v: 1, salt: toB64(salt), iv: toB64(iv), ct: toB64(ct), iter };
+}
+async function unlockWithCode(code, lock) {
+  try {
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(lock.iv) }, await codeKey(code, fromB64(lock.salt), lock.iter), fromB64(lock.ct));
+    return new TextDecoder().decode(pt);
+  } catch (e) { return null; }
+}
+async function checkToken(t) {
+  const h = { Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + t };
+  const r = await fetch(`https://api.github.com/repos/${REPO}`, { headers: h, cache: 'no-store' });
+  if (!r.ok) return 'bad';
+  // skrivetest: lager en tom, ubrukt blob (krever Contents: Read and write, endrer ingenting)
+  const w = await fetch(`https://api.github.com/repos/${REPO}/git/blobs`, { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, h), body: JSON.stringify({ content: '', encoding: 'utf-8' }) });
+  return w.ok ? 'ok' : 'readonly';
+}
 function openUnlock() {
   const dlg = $('#unlockDlg');
   dlg.innerHTML = `<form id="unlockForm" novalidate><div class="dh1"><h2>Lås opp redigering</h2><button type="button" class="x" data-close aria-label="Lukk">×</button></div>
-    <div class="db"><p style="margin:0;color:var(--muted)">Alle med lenken kan se oversikten. For å gjøre endringer limer du inn redigeringsnøkkelen én gang på denne enheten. Spør den som delte lenken om nøkkelen.</p>
-      <label class="f">Redigeringsnøkkel<input class="txt" id="uTok" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…"></label>
+    <div class="db"><p style="margin:0;color:var(--muted)">Alle med lenken kan se oversikten. For å gjøre endringer skriver du inn koden du har fått, én gang på denne enheten.</p>
+      <label class="f">Kode<input class="txt" id="uTok" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Kode eller lang nøkkel (github_pat_…)"></label>
       <div class="err" id="uErr" hidden></div></div>
-    <div class="df"><button type="button" class="btn" data-close>Avbryt</button><button type="submit" class="btn primary">Lås opp</button></div></form>`;
+    <div class="df"><button type="button" class="btn" data-close>Avbryt</button><button type="submit" class="btn primary" id="uGo">Lås opp</button></div></form>`;
   $('#unlockForm').addEventListener('submit', async e => {
     e.preventDefault();
-    const t = $('#uTok').value.trim(), err = m => { const x = $('#uErr'); x.textContent = m; x.hidden = false; };
-    if (!t) return err('Lim inn nøkkelen.');
+    const v = $('#uTok').value.trim(), err = m => { const x = $('#uErr'); x.textContent = m; x.hidden = false; $('#uGo').disabled = false; $('#uGo').textContent = 'Lås opp'; };
+    if (!v) return err('Skriv inn koden.');
+    $('#uGo').disabled = true; $('#uGo').textContent = 'Sjekker…'; $('#uErr').hidden = true;
+    let t = v;
     try {
-      const r = await fetch(`https://api.github.com/repos/${REPO}`, { headers: { Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + t }, cache: 'no-store' });
-      if (!r.ok) return err('Nøkkelen ble ikke godtatt. Sjekk at den er riktig og ikke utløpt.');
-      // skrivetest: lager en tom, ubrukt blob (krever Contents: Read and write, endrer ingenting)
-      const w = await fetch(`https://api.github.com/repos/${REPO}/git/blobs`, { method: 'POST', headers: { Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ content: '', encoding: 'utf-8' }) });
-      if (!w.ok) return err('Nøkkelen kan lese, men ikke skrive. Rediger nøkkelen på GitHub: under «Repository access» må efjord-stetind-resort være valgt, og under «Permissions» må «Contents» stå på «Read and write». Du trenger ikke lage en ny nøkkel.');
+      if (!/^(github_pat_|ghp_)/.test(v)) {
+        if (!state.lock) await pull();
+        if (!state.lock) return err('Det er ikke satt opp noen kort kode ennå. Bruk den lange nøkkelen.');
+        t = await unlockWithCode(v, state.lock);
+        if (!t) return err('Feil kode.');
+      }
+      const res = await checkToken(t);
+      if (res === 'bad') return err(t === v ? 'Nøkkelen ble ikke godtatt. Sjekk at den er riktig og ikke utløpt.' : 'Koden er riktig, men nøkkelen bak den er utløpt eller slettet. Den som satte opp koden må lage en ny.');
+      if (res === 'readonly') return err('Nøkkelen kan lese, men ikke skrive. Rediger nøkkelen på GitHub: under «Repository access» må efjord-stetind-resort være valgt, og under «Permissions» må «Contents» stå på «Read and write».');
     } catch (x) { return err('Fikk ikke kontakt med GitHub. Prøv igjen.'); }
     token = t; try { localStorage.setItem(TKEY, t); } catch (x) {}
     dlg.close(); syncIdle(); toast('Redigering er låst opp på denne enheten.'); pull();
   });
   dlg.showModal(); $('#uTok').focus();
 }
+function openEditMenu() {
+  const dlg = $('#unlockDlg');
+  dlg.innerHTML = `<form id="codeForm" novalidate><div class="dh1"><h2>Redigering</h2><button type="button" class="x" data-close aria-label="Lukk">×</button></div>
+    <div class="db"><p style="margin:0;color:var(--muted)">Denne enheten kan redigere, og endringer lagres for alle med lenken.</p>
+      <label class="f">${state.lock ? 'Ny kort kode (erstatter den gamle)' : 'Kort kode for andre'}<input class="txt" id="cCode" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="f.eks. fjord-tind-sommer"></label>
+      <p class="hint" style="margin:-6px 0 0">Andre kan låse opp med koden i stedet for den lange nøkkelen. Bruk minst 8 tegn, gjerne tre ord, og ikke noe som er lett å gjette. Store og små bokstaver spiller ingen rolle.</p>
+      <div class="err" id="cErr" hidden></div></div>
+    <div class="df"><span class="sp"><button type="button" class="btn danger" id="cLock">Lås denne enheten</button></span>
+      <button type="button" class="btn" data-close>Avbryt</button><button type="submit" class="btn primary" id="cGo">Lagre kode</button></div></form>`;
+  $('#cLock').addEventListener('click', () => { dlg.close(); dropToken('Redigering er låst på denne enheten.'); });
+  $('#codeForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const c = $('#cCode').value;
+    if (normCode(c).length < 8) { const x = $('#cErr'); x.textContent = 'Koden må ha minst 8 tegn.'; x.hidden = false; return; }
+    $('#cGo').disabled = true; $('#cGo').textContent = 'Lagrer…';
+    state.lock = await lockToken(c, token);
+    save(); dlg.close(); toast('Koden er lagret. Del den med dem som skal kunne redigere.', 7000);
+  });
+  dlg.showModal(); $('#cCode').focus();
+}
 function syncClick() {
   const k = $('#sync').dataset.kind;
   if (k === 'view') return openUnlock();
   if (k === 'err') { if (pending) { setSync('saving', 'Lagrer…'); return flush(); } return pull(); }
-  if (k === 'ok' && confirm('Redigering er låst opp på denne enheten. Vil du låse den igjen (fjerne nøkkelen herfra)?')) dropToken('Redigering er låst på denne enheten.');
+  if (k === 'ok') return openEditMenu();
 }
 
 /* ---------- helpers ---------- */
@@ -758,7 +812,7 @@ document.addEventListener('click', e => {
   }
   if (d.step) return setupStep(d.step, +d.d);
   if (t.hasAttribute('data-savesetup')) return saveSetup();
-  if (t.hasAttribute('data-reset') && confirm('Tilbakestille alt til eksempeldataene? Dette overskriver dataene for alle som bruker lenken.')) { state = seed(); save(); $('#setupDlg').close(); render(); }
+  if (t.hasAttribute('data-reset') && confirm('Tilbakestille alt til eksempeldataene? Dette overskriver dataene for alle som bruker lenken.')) { state = Object.assign(seed(), state.lock ? { lock: state.lock } : {}); save(); $('#setupDlg').close(); render(); }
 });
 document.addEventListener('input', e => {
   const t = e.target;
