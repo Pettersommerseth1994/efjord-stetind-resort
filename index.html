@@ -138,6 +138,8 @@ label.f input,label.f select,.txt{border:1px solid var(--line-s);border-radius:1
 .setrow{display:flex;justify-content:flex-start;align-items:center;gap:14px}
 .cabin-edit{border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;gap:10px;background:rgba(255,255,255,.5)}
 .room-edit{display:grid;grid-template-columns:minmax(70px,.8fr) auto auto;gap:10px;align-items:end}
+.cabin-edit.fadein{animation:fadein .7s ease both}
+@keyframes fadein{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 .tcol{display:grid;gap:3px;justify-items:start}
 .room-edit .stepper{height:38px}
 .room-edit .txt{padding:8px 10px}
@@ -522,22 +524,24 @@ function openSetup() {
   $('#setupDlg').showModal();
 }
 function ensureTypes(r) { r.types = Array.from({ length: r.beds }, (_, i) => (r.types && r.types[i]) || 's'); }
+let justAdded = null;
 function renderSetup() {
   const dlg = $('#setupDlg');
+  const oldDb = dlg.querySelector('.db'), keepTop = oldDb ? oldDb.scrollTop : 0;
   const rooms = draft.reduce((a, c) => a + c.rooms.length, 0), beds = draft.reduce((a, c) => a + countSlots(c), 0);
   const step = (a, v) => `<span class="stepper"><button type="button" data-step="${a}" data-d="-1" aria-label="Færre">−</button><output>${v}</output><button type="button" data-step="${a}" data-d="1" aria-label="Flere">+</button></span>`;
   let h = `<div class="dh1"><h2>Hytter, rom og senger</h2><button type="button" class="x" data-close aria-label="Lukk">×</button></div><div class="db">
     <div class="setrow"><b>Antall hytter</b>${step('cabins', draft.length)}</div>`;
   draft.forEach((c, ci) => {
-    h += `<div class="cabin-edit"><label class="f">Navn på hytte ${ci + 1}<input class="txt" data-name="${ci}" value="${esc(c.name)}"></label>
+    h += `<div class="cabin-edit" data-ci="${ci}"><label class="f">Navn på hytte ${ci + 1}<input class="txt" data-name="${ci}" value="${esc(c.name)}"></label>
       <label class="f">Pris per seng per natt (kr)<input class="txt" type="number" min="0" step="10" inputmode="numeric" data-price="${ci}" value="${price(c)}"></label>
       <label class="f">Pris dobbeltseng per natt (kr) – hele sengen, deles av de som bor der<input class="txt" type="number" min="0" step="10" inputmode="numeric" data-priced="${ci}" value="${priceD(c)}"></label>
       <div class="setrow"><b>Antall rom</b>${step('rooms:' + ci, c.rooms.length)}</div>`;
     c.rooms.forEach((r, ri) => {
       const ns = r.types.filter(t => t === 's').length, nd = r.types.length - ns;
       h += `<div class="room-edit"><input class="txt" data-rname="${ci}:${ri}" value="${esc(r.name)}" aria-label="Navn på rom">
-        <div class="tcol"><span class="hint">Enkeltsenger</span>${step('single:' + ci + ':' + ri, ns)}</div>
-        <div class="tcol"><span class="hint">Dobbeltsenger</span>${step('double:' + ci + ':' + ri, nd)}</div></div>`;
+        <div class="tcol">${ri === 0 ? '<span class="hint">Enkeltsenger</span>' : ''}${step('single:' + ci + ':' + ri, ns)}</div>
+        <div class="tcol">${ri === 0 ? '<span class="hint">Dobbeltsenger</span>' : ''}${step('double:' + ci + ':' + ri, nd)}</div></div>`;
     });
     h += '</div>';
   });
@@ -545,11 +549,17 @@ function renderSetup() {
     <div class="df"><span class="sp"><button type="button" class="btn sm" data-export>Eksporter</button><button type="button" class="btn sm" data-import>Importer</button><button type="button" class="btn sm danger" data-reset>Tilbakestill til eksempel</button></span>
     <button type="button" class="btn" data-close>Avbryt</button><button type="button" class="btn primary" data-savesetup>Lagre endringer</button></div>`;
   dlg.innerHTML = h;
+  const db = dlg.querySelector('.db');
+  if (justAdded !== null) {
+    const el = dlg.querySelector(`.cabin-edit[data-ci="${justAdded}"]`); justAdded = null;
+    db.scrollTop = keepTop;
+    if (el) { el.classList.add('fadein'); setTimeout(() => db.scrollTo({ top: db.scrollTop + el.getBoundingClientRect().top - db.getBoundingClientRect().top - 12, behavior: 'smooth' }), 60); }
+  } else db.scrollTop = keepTop;
 }
 function setupStep(a, d) {
   const [t, x, y] = a.split(':');
   if (t === 'cabins') {
-    if (d > 0 && draft.length < 20) draft.push({ id: uid(), name: 'Hytte ' + (draft.length + 1), price: price(draft[draft.length - 1]), priceDouble: priceD(draft[draft.length - 1]), rooms: [{ id: uid(), name: 'Rom 1', beds: 2, types: ['s', 's'] }] });
+    if (d > 0 && draft.length < 20) { justAdded = draft.length; draft.push({ id: uid(), name: 'Hytte ' + (draft.length + 1), price: price(draft[draft.length - 1]), priceDouble: priceD(draft[draft.length - 1]), rooms: [{ id: uid(), name: 'Rom 1', beds: 2, types: ['s', 's'] }] }); }
     if (d < 0 && draft.length > 1) draft.pop();
   } else if (t === 'rooms') {
     const c = draft[+x];
