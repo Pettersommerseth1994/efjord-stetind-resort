@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Efjord & Stetind Resort – Romfordeling</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d5c7a'/%3E%3Cpath d='M6 54 L24 20 L29 20 L31 8 L36 8 L38 20 L44 28 L58 54Z' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+:root{
+  --ink:#14303f; --muted:#5c7686; --fjord:#1d5c7a; --fjord-d:#154660; --bg:#eef3f6; --panel:#fff;
+  --line:#d6e1e8; --line-s:#b7c8d3; --weekend:#f3f7f9; --free:#e4f4ea; --free-ink:#1f6b3a;
+  --warn:#fff1d6; --warn-ink:#8a5a00; --full:#fde2e0; --full-ink:#9b2c24; --accent:#e07a2f;
+  --label:176px; --cw:30px;
+}
+*{box-sizing:border-box}
+html{color-scheme:light}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:1280px;margin:0 auto;padding:0 16px 48px}
+
+/* Header */
+.hero{background:linear-gradient(135deg,#123a4f 0%,#1d5c7a 55%,#3b87a6 100%);color:#fff;position:relative;overflow:hidden}
+.hero svg{position:absolute;right:0;bottom:0;height:100%;width:auto;opacity:.25;pointer-events:none}
+.hero .wrap{padding-top:26px;padding-bottom:26px;position:relative;display:flex;gap:16px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}
+.hero h1{margin:0;font-size:clamp(22px,3.4vw,32px);letter-spacing:-.01em}
+.hero p{margin:4px 0 0;opacity:.85}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line-s);background:#fff;border-radius:10px;padding:9px 14px;cursor:pointer;font-weight:600;transition:.12s}
+.btn:hover{background:#f2f7fa}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:#c96820}
+.btn.ghost{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.4);color:#fff}
+.btn.ghost:hover{background:rgba(255,255,255,.25)}
+.btn.danger{color:var(--full-ink);border-color:#e7b4b0}
+.btn.sm{padding:5px 10px;font-size:13px;border-radius:8px}
+.btn:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #7fb7d1;outline-offset:1px}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:18px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.card .k{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.card .v{font-size:26px;font-weight:700;margin-top:2px}
+.card .s{color:var(--muted);font-size:13px}
+.bar{height:8px;background:#e3ecf1;border-radius:99px;overflow:hidden;margin-top:8px}
+.bar>i{display:block;height:100%;background:var(--fjord);border-radius:99px}
+.datepick{display:flex;gap:8px;align-items:center;margin-top:6px}
+.datepick input{border:1px solid var(--line-s);border-radius:8px;padding:5px 8px;background:#fff}
+
+/* Tabs / toolbar */
+.toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.tabs{display:inline-flex;background:#dde8ee;border-radius:12px;padding:4px;gap:4px}
+.tabs button{border:0;background:transparent;padding:8px 16px;border-radius:9px;font-weight:600;cursor:pointer;color:var(--muted)}
+.tabs button[aria-selected=true]{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.hint{color:var(--muted);font-size:13px}
+.jump{display:flex;gap:6px;align-items:center}
+
+/* Timeline */
+.tl-scroll{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:auto;max-height:min(74vh,900px);position:relative}
+.tl{width:max-content;min-width:100%}
+.row{display:grid;grid-template-columns:var(--label) calc(var(--cw)*62)}
+.lab{position:sticky;left:0;z-index:5;background:#fff;border-right:1px solid var(--line-s);padding:0 10px;display:flex;align-items:center;gap:6px;min-height:34px;font-size:13px}
+.lab b{font-weight:650}
+.lab span{color:var(--muted)}
+.thead{position:sticky;top:0;z-index:8;background:#fff}
+.thead .lab{z-index:9}
+.months{display:grid;grid-template-columns:repeat(2,1fr);font-weight:700}
+.months div{padding:6px 10px;border-bottom:1px solid var(--line);border-left:1px solid var(--line-s);background:#f7fafc}
+.months div:first-child{border-left:0}
+.dh{display:grid;grid-template-columns:repeat(62,var(--cw))}
+.dh div{text-align:center;font-size:11px;line-height:1.15;padding:4px 0;color:var(--muted);border-bottom:1px solid var(--line)}
+.dh div b{display:block;font-size:13px;color:var(--ink)}
+.dh .we{background:var(--weekend)}
+.dh .ms,.c.ms{border-left:1px solid var(--line-s)}
+.dh .sel b{background:var(--fjord);color:#fff;border-radius:6px;margin:0 3px}
+.freerow .lab{font-weight:600;border-bottom:1px solid var(--line-s);min-height:30px}
+.free{display:grid;grid-template-columns:repeat(62,var(--cw));border-bottom:1px solid var(--line-s)}
+.free div{text-align:center;font-size:12px;font-weight:650;padding:5px 0}
+.free .f2{background:var(--free);color:var(--free-ink)}
+.free .f1{background:var(--warn);color:var(--warn-ink)}
+.free .f0{background:var(--full);color:var(--full-ink)}
+.cabin{position:sticky;left:0;display:block}
+.cabin-h{grid-column:1/-1;background:linear-gradient(90deg,#e4eef4,#f3f7f9);font-weight:700;padding:7px 10px;border-top:1px solid var(--line-s);border-bottom:1px solid var(--line)}
+.cabin-h .ct{position:sticky;left:10px;display:inline-flex;gap:8px;align-items:baseline}
+.cabin-h small{font-weight:500;color:var(--muted)}
+.bedrow{border-bottom:1px solid var(--line)}
+.bedrow.roomstart .lab,.bedrow.roomstart .days{border-top:1px solid var(--line-s)}
+.days{position:relative;display:grid;grid-template-columns:repeat(62,var(--cw));min-height:34px;user-select:none;-webkit-user-select:none}
+.days>*{grid-row:1}
+.c{cursor:crosshair;border-left:1px solid #edf2f5}
+.c.we{background:var(--weekend)}
+.c.sel{background:#bfe0ef!important;box-shadow:inset 0 0 0 1px var(--fjord)}
+.c:hover{background:#e6f2f8}
+.res{z-index:2;margin:4px 1px;border-radius:8px;padding:0 8px;display:flex;align-items:center;font-size:12.5px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border:1px solid;transition:filter .1s}
+.res:hover{filter:brightness(.95);box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.res.l{border-top-left-radius:2px;border-bottom-left-radius:2px}
+.res.r{border-top-right-radius:2px;border-bottom-right-radius:2px}
+
+/* Who-lives-where */
+.cabins{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.cabin-card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.cabin-card>h3{margin:0;padding:12px 16px;background:linear-gradient(90deg,#e4eef4,#f3f7f9);font-size:16px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.cabin-card>h3 small{font-weight:500;color:var(--muted)}
+.room{padding:10px 16px 12px;border-top:1px solid var(--line)}
+.room h4{margin:0 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:flex;justify-content:space-between}
+.bedline{display:flex;gap:8px;align-items:center;padding:4px 0;flex-wrap:wrap}
+.bedline .bn{width:58px;color:var(--muted);font-size:13px}
+.chip{border:1px solid;border-radius:999px;padding:2px 10px;font-weight:650;font-size:13px;cursor:pointer;background:none}
+.chip small{font-weight:500;opacity:.85}
+.openbed{color:var(--free-ink);background:var(--free);border:1px dashed #9ccfae;border-radius:999px;padding:2px 12px;font-size:13px;cursor:pointer}
+.openbed:hover{background:#d3eddc}
+.more{margin-left:4px;font-size:12px;color:var(--muted)}
+
+/* Dialogs */
+dialog{border:0;border-radius:18px;padding:0;width:min(580px,94vw);max-height:92vh;box-shadow:0 20px 60px rgba(10,30,45,.35);color:var(--ink)}
+dialog::backdrop{background:rgba(10,30,45,.5)}
+dialog[open]{display:flex;flex-direction:column}
+.dh1{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.dh1 h2{margin:0;font-size:19px}
+.x{border:0;background:none;font-size:24px;line-height:1;cursor:pointer;color:var(--muted)}
+.db{padding:16px 20px;overflow:auto;display:grid;gap:14px}
+.df{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;background:#f7fafc}
+.df .sp{margin-right:auto;display:flex;gap:8px;flex-wrap:wrap}
+label.f{display:grid;gap:4px;font-weight:600;font-size:13px}
+label.f input,label.f select,.txt{border:1px solid var(--line-s);border-radius:9px;padding:9px 11px;background:#fff;font-weight:400;font-size:15px;width:100%}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.err{background:var(--full);color:var(--full-ink);padding:8px 12px;border-radius:9px;font-size:14px}
+.nights{color:var(--muted);font-size:13px;margin-top:-6px}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--line-s);border-radius:10px;overflow:hidden;background:#fff}
+.stepper button{border:0;background:#f2f7fa;width:34px;height:34px;font-size:18px;cursor:pointer}
+.stepper button:hover{background:#e2edf3}
+.stepper output{min-width:38px;text-align:center;font-weight:700}
+.setrow{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.cabin-edit{border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:10px;background:#fbfdfe}
+.room-edit{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.sum{font-size:13px;color:var(--muted)}
+@media (max-width:640px){
+  :root{--label:118px;--cw:28px}
+  .lab{font-size:12px;padding:0 6px}
+  .two{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<header class="hero">
+  <svg viewBox="0 0 400 140" preserveAspectRatio="xMaxYMax meet" aria-hidden="true"><path d="M0 140 L70 70 L110 100 L170 40 L205 40 L212 6 L228 6 L232 40 L262 62 L300 38 L360 95 L400 70 L400 140Z" fill="#fff"/></svg>
+  <div class="wrap">
+    <div>
+      <h1>Efjord &amp; Stetind Resort</h1>
+      <p>Romfordeling · juli og august 2027</p>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" data-action="setup">⚙ Rediger hytter</button>
+      <button class="btn primary" data-action="new">+ Ny reservasjon</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="stats" id="stats"></section>
+  <div class="toolbar">
+    <div class="tabs" role="tablist">
+      <button role="tab" data-view="timeline">Belegg per seng</button>
+      <button role="tab" data-view="who">Hvem bor hvor</button>
+    </div>
+    <div class="jump" id="jump">
+      <span class="hint">Gå til:</span>
+      <button class="btn sm" data-jump="0">Juli</button>
+      <button class="btn sm" data-jump="31">August</button>
+    </div>
+  </div>
+  <p class="hint" id="hintline" style="margin:0 0 8px">Dra over ledige netter på en seng for å reservere. Klikk på en reservasjon for å endre eller slette. Hver kolonne er én natt; utsjekk er dagen etter siste natt.</p>
+  <div id="view"></div>
+</main>
+
+<dialog id="bookDlg"></dialog>
+<dialog id="setupDlg"></dialog>
+<input type="file" id="importFile" accept="application/json" hidden>
+
+<script>
+(() => {
+'use strict';
+const YEAR = 2027, START = Date.UTC(YEAR, 6, 1), N = 62; // 1. juli – 31. august
+const KEY = 'efjord-stetind-v1';
+const MONTHS = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
+const WD = ['S','M','T','O','T','F','L'];
+const iso = i => new Date(START + i * 864e5).toISOString().slice(0, 10);
+const idx = s => Math.round((Date.parse(s + 'T00:00:00Z') - START) / 864e5);
+const fmt = s => { const d = new Date(s + 'T00:00:00Z'); return d.getUTCDate() + '. ' + MONTHS[d.getUTCMonth()]; };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Math.random().toString(36).slice(2, 9);
+const $ = s => document.querySelector(s);
+
+function seed() {
+  return {
+    cabins: [
+      { id:'c1', name:'Efjord', rooms:[ {id:'r1',name:'Rom 1',beds:4}, {id:'r2',name:'Rom 2',beds:2}, {id:'r3',name:'Rom 3',beds:2} ] },
+      { id:'c2', name:'Stetind', rooms:[ {id:'r4',name:'Rom 1',beds:4}, {id:'r5',name:'Rom 2',beds:4} ] },
+      { id:'c3', name:'Fjordbris', rooms:[ {id:'r6',name:'Rom 1',beds:2}, {id:'r7',name:'Rom 2',beds:2} ] }
+    ],
+    bookings: [
+      { id:'b1', guest:'Petter',   bed:'r1:0', start:'2027-07-31', end:'2027-08-07' },
+      { id:'b2', guest:'Lone',     bed:'r1:1', start:'2027-08-06', end:'2027-08-08' },
+      { id:'b3', guest:'Ragnhild', bed:'r2:0', start:'2027-08-05', end:'2027-08-08' },
+      { id:'b4', guest:'Preben',   bed:'r2:1', start:'2027-08-05', end:'2027-08-08' },
+      { id:'b5', guest:'Elin',     bed:'r3:0', start:'2027-08-05', end:'2027-08-08' },
+      { id:'b6', guest:'Sondre',   bed:'r3:1', start:'2027-08-05', end:'2027-08-08' }
+    ]
+  };
+}
+let state = load();
+let view = 'timeline';
+let selDate = '2027-08-06';
+
+function load() {
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.cabins) && Array.isArray(s.bookings)) return s; } catch (e) {}
+  return seed();
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+/* ---------- helpers ---------- */
+function allBeds() {
+  const out = [];
+  state.cabins.forEach(c => c.rooms.forEach(r => { for (let n = 0; n < r.beds; n++) out.push({ key: r.id + ':' + n, cabin: c, room: r, n }); }));
+  return out;
+}
+const bedMap = () => Object.fromEntries(allBeds().map(b => [b.key, b]));
+const bedLabel = b => `${b.cabin.name} › ${b.room.name} › Seng ${b.n + 1}`;
+const occupied = (bed, i, ignore) => state.bookings.some(b => b.bed === bed && b.id !== ignore && idx(b.start) <= i && i < idx(b.end));
+function overlaps(bed, s, e, ignore) { return state.bookings.some(b => b.bed === bed && b.id !== ignore && idx(b.start) < e && s < idx(b.end)); }
+function color(name) {
+  let h = 0; for (const ch of name.toLowerCase()) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const hue = (h % 12) * 30 + 8;
+  return { bg: `hsl(${hue} 75% 88%)`, bd: `hsl(${hue} 50% 55%)`, fg: `hsl(${hue} 60% 20%)` };
+}
+const colorStyle = n => { const c = color(n); return `background:${c.bg};border-color:${c.bd};color:${c.fg}`; };
+const nightsBetween = (a, b) => idx(b) - idx(a);
+
+/* ---------- render ---------- */
+function render() {
+  const beds = allBeds(), total = beds.length;
+  const si = idx(selDate);
+  const busy = state.bookings.filter(b => idx(b.start) <= si && si < idx(b.end)).length;
+  const rooms = state.cabins.reduce((a, c) => a + c.rooms.length, 0);
+  $('#stats').innerHTML = `
+    <div class="card"><div class="k">Anlegg</div><div class="v">${total} senger</div><div class="s">${state.cabins.length} hytter · ${rooms} rom</div></div>
+    <div class="card"><div class="k">Reservasjoner</div><div class="v">${state.bookings.length}</div><div class="s">${new Set(state.bookings.map(b => b.guest.toLowerCase())).size} gjester totalt</div></div>
+    <div class="card"><div class="k">Belegg natt til</div>
+      <div class="datepick"><input type="date" id="selDate" value="${selDate}" min="${iso(0)}" max="${iso(N-1)}"></div>
+      <div class="v" style="font-size:20px;margin-top:6px">${busy} av ${total} belagt · ${total - busy} ledige</div>
+      <div class="bar"><i style="width:${total ? busy / total * 100 : 0}%"></i></div></div>`;
+  document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.view === view));
+  $('#jump').style.display = $('#hintline').style.display = view === 'timeline' ? '' : 'none';
+  if (view === 'timeline') renderTimeline(); else renderWho();
+}
+
+function renderTimeline() {
+  const prev = $('.tl-scroll');
+  const sl = prev ? prev.scrollLeft : null, st = prev ? prev.scrollTop : 0;
+  const si = idx(selDate);
+  const free = new Array(N).fill(allBeds().length);
+  state.bookings.forEach(b => { for (let i = Math.max(0, idx(b.start)); i < Math.min(N, idx(b.end)); i++) free[i]--; });
+  const total = allBeds().length;
+  let dh = '', fr = '';
+  for (let i = 0; i < N; i++) {
+    const d = new Date(START + i * 864e5), wd = d.getUTCDay(), ms = d.getUTCDate() === 1 && i > 0;
+    dh += `<div class="${wd === 0 || wd === 6 ? 'we' : ''} ${ms ? 'ms' : ''} ${i === si ? 'sel' : ''}" title="${fmt(iso(i))}">${WD[wd]}<b>${d.getUTCDate()}</b></div>`;
+    const f = free[i];
+    fr += `<div class="${f <= 0 ? 'f0' : f <= total / 4 ? 'f1' : 'f2'} ${ms ? 'ms' : ''}" title="${f} ledige senger natt til ${fmt(iso(i))}">${f}</div>`;
+  }
+  let h = `<div class="tl"><div class="thead">
+      <div class="row"><div class="lab" style="border-bottom:1px solid var(--line)"></div><div class="months"><div>Juli</div><div>August</div></div></div>
+      <div class="row"><div class="lab" style="border-bottom:1px solid var(--line)"><span>Dato</span></div><div class="dh">${dh}</div></div>
+      <div class="row freerow"><div class="lab">Ledige senger</div><div class="free">${fr}</div></div>
+    </div>`;
+  state.cabins.forEach(c => {
+    const nb = c.rooms.reduce((a, r) => a + r.beds, 0);
+    h += `<div class="row"><div class="cabin-h"><span class="ct">🏠 ${esc(c.name)} <small>${c.rooms.length} rom · ${nb} senger</small></span></div></div>`;
+    c.rooms.forEach(r => {
+      for (let n = 0; n < r.beds; n++) {
+        const key = r.id + ':' + n;
+        let cells = '';
+        for (let i = 0; i < N; i++) {
+          const d = new Date(START + i * 864e5), wd = d.getUTCDay();
+          cells += `<i class="c ${wd === 0 || wd === 6 ? 'we' : ''} ${d.getUTCDate() === 1 && i > 0 ? 'ms' : ''}" style="grid-column:${i + 1}"></i>`;
+        }
+        let bars = '';
+        state.bookings.filter(b => b.bed === key).forEach(b => {
+          const s = idx(b.start), e = idx(b.end);
+          const cs = Math.max(0, s), ce = Math.min(N, e);
+          if (ce <= cs) return;
+          bars += `<div class="res ${s >= 0 ? 'l' : ''} ${e <= N ? 'r' : ''}" data-edit="${b.id}" style="grid-column:${cs + 1}/${ce + 1};${colorStyle(b.guest)}" title="${esc(b.guest)} · ${fmt(b.start)} – ${fmt(b.end)} (${e - s} netter)">${esc(b.guest)}<span style="font-weight:500;margin-left:6px;opacity:.8">${fmt(b.start)}–${fmt(b.end)}</span></div>`;
+        });
+        h += `<div class="row bedrow ${n === 0 ? 'roomstart' : ''}"><div class="lab">${n === 0 ? `<b>${esc(r.name)}</b>` : '<b style="visibility:hidden">·</b>'}<span>Seng ${n + 1}</span></div><div class="days" data-bed="${key}">${cells}${bars}</div></div>`;
+      }
+    });
+  });
+  h += '</div>';
+  $('#view').innerHTML = `<div class="tl-scroll">${h}</div>`;
+  const sc = $('.tl-scroll');
+  if (sl === null) { const cw = cellW(); sc.scrollLeft = Math.max(0, (idx('2027-07-27')) * cw); }
+  else { sc.scrollLeft = sl; sc.scrollTop = st; }
+}
+const cellW = () => { const d = document.querySelector('.days'); return d ? d.getBoundingClientRect().width / N : 30; };
+
+function renderWho() {
+  let h = '<div class="cabins">';
+  state.cabins.forEach(c => {
+    const nb = c.rooms.reduce((a, r) => a + r.beds, 0);
+    h += `<article class="cabin-card"><h3>🏠 ${esc(c.name)} <small>${nb} senger</small></h3>`;
+    c.rooms.forEach(r => {
+      h += `<div class="room"><h4><span>${esc(r.name)}</span><span>${r.beds} senger</span></h4>`;
+      for (let n = 0; n < r.beds; n++) {
+        const key = r.id + ':' + n;
+        const bs = state.bookings.filter(b => b.bed === key).sort((a, b) => a.start.localeCompare(b.start));
+        h += `<div class="bedline"><span class="bn">Seng ${n + 1}</span>`;
+        bs.forEach(b => { h += `<button class="chip" data-edit="${b.id}" style="${colorStyle(b.guest)}">${esc(b.guest)} <small>${fmt(b.start)} – ${fmt(b.end)}</small></button>`; });
+        h += bs.length ? `<button class="openbed" data-newbed="${key}">+ legg til</button>` : `<button class="openbed" data-newbed="${key}">Ledig · reserver</button>`;
+        h += '</div>';
+      }
+      h += '</div>';
+    });
+    h += '</article>';
+  });
+  $('#view').innerHTML = h + '</div>';
+}
+
+/* ---------- drag to reserve ---------- */
+let drag = null;
+document.addEventListener('pointerdown', e => {
+  const days = e.target.closest && e.target.closest('.days');
+  if (!days || e.target.closest('.res') || (e.button && e.button !== 0)) return;
+  const day = dayAt(days, e.clientX);
+  if (occupied(days.dataset.bed, day)) return;
+  drag = { days, bed: days.dataset.bed, anchor: day, lo: day, hi: day };
+  paint();
+});
+document.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const cur = dayAt(drag.days, e.clientX);
+  let lo = drag.anchor, hi = drag.anchor;
+  for (let i = drag.anchor - 1; i >= cur && !occupied(drag.bed, i); i--) lo = i;
+  for (let i = drag.anchor + 1; i <= cur && !occupied(drag.bed, i); i++) hi = i;
+  drag.lo = lo; drag.hi = hi; paint();
+});
+document.addEventListener('pointerup', () => {
+  if (!drag) return;
+  const d = drag; drag = null; paint(d);
+  openBooking({ guest: '', bed: d.bed, start: iso(d.lo), end: iso(d.hi + 1) });
+});
+document.addEventListener('pointercancel', () => { if (drag) { const d = drag; drag = null; paint(d); } });
+function dayAt(days, x) { const r = days.getBoundingClientRect(); return Math.min(N - 1, Math.max(0, Math.floor((x - r.left) / (r.width / N)))); }
+function paint(d) {
+  const t = d || drag; if (!t) return;
+  t.days.querySelectorAll('.c').forEach((c, i) => c.classList.toggle('sel', !d && i >= t.lo && i <= t.hi));
+}
+
+/* ---------- booking dialog ---------- */
+function openBooking(p) {
+  const bm = bedMap();
+  const beds = allBeds();
+  if (!beds.length) { alert('Legg først til hytter, rom og senger.'); return; }
+  const bedKey = bm[p.bed] ? p.bed : beds[0].key;
+  const dlg = $('#bookDlg');
+  let opts = '', lastC = null;
+  beds.forEach(b => {
+    if (lastC !== b.cabin.id) { if (lastC) opts += '</optgroup>'; opts += `<optgroup label="${esc(b.cabin.name)}">`; lastC = b.cabin.id; }
+    opts += `<option value="${b.key}" ${b.key === bedKey ? 'selected' : ''}>${esc(b.room.name)} · Seng ${b.n + 1}</option>`;
+  });
+  opts += '</optgroup>';
+  const names = [...new Set(state.bookings.map(b => b.guest))];
+  dlg.innerHTML = `<form method="dialog" id="bookForm" novalidate>
+    <div class="dh1"><h2>${p.id ? 'Endre reservasjon' : 'Ny reservasjon'}</h2><button type="button" class="x" data-close aria-label="Lukk">×</button></div>
+    <div class="db">
+      <label class="f">Navn<input id="bGuest" list="guestList" value="${esc(p.guest)}" placeholder="F.eks. Petter" autocomplete="off"></label>
+      <datalist id="guestList">${names.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+      <label class="f">Seng<select id="bBed">${opts}</select></label>
+      <div class="two">
+        <label class="f">Innsjekk<input type="date" id="bStart" value="${p.start}" min="${iso(0)}" max="${iso(N-1)}"></label>
+        <label class="f">Utsjekk<input type="date" id="bEnd" value="${p.end}" min="${iso(1)}" max="${iso(N)}"></label>
+      </div>
+      <div class="nights" id="bNights"></div>
+      <div class="err" id="bErr" hidden></div>
+    </div>
+    <div class="df">
+      ${p.id ? '<span class="sp"><button type="button" class="btn danger" id="bDel">Slett</button></span>' : ''}
+      <button type="button" class="btn" data-close>Avbryt</button>
+      <button type="submit" class="btn primary">Lagre</button>
+    </div></form>`;
+  const upd = () => { const n = nightsBetween($('#bStart').value, $('#bEnd').value); $('#bNights').textContent = n > 0 ? `${n} ${n === 1 ? 'natt' : 'netter'}` : ''; };
+  ['bStart', 'bEnd'].forEach(id => $('#' + id).addEventListener('input', upd)); upd();
+  $('#bookForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const guest = $('#bGuest').value.trim(), bed = $('#bBed').value, s = $('#bStart').value, en = $('#bEnd').value;
+    const err = m => { const x = $('#bErr'); x.textContent = m; x.hidden = false; };
+    if (!guest) return err('Skriv inn et navn.');
+    if (!s || !en) return err('Velg innsjekk og utsjekk.');
+    const si = idx(s), ei = idx(en);
+    if (si < 0 || ei > N || si >= N) return err('Datoene må ligge mellom 1. juli og 31. august (utsjekk kan være 1. september).');
+    if (ei <= si) return err('Utsjekk må være etter innsjekk.');
+    if (overlaps(bed, si, ei, p.id)) return err('Sengen er allerede reservert i hele eller deler av perioden.');
+    if (p.id) Object.assign(state.bookings.find(b => b.id === p.id), { guest, bed, start: s, end: en });
+    else state.bookings.push({ id: uid(), guest, bed, start: s, end: en });
+    save(); dlg.close(); render();
+  });
+  const del = $('#bDel');
+  if (del) del.addEventListener('click', () => {
+    if (confirm(`Slette reservasjonen til ${p.guest}?`)) { state.bookings = state.bookings.filter(b => b.id !== p.id); save(); dlg.close(); render(); }
+  });
+  dlg.showModal();
+  if (!p.id) $('#bGuest').focus();
+}
+function firstFreeBed() {
+  const t = '2027-08-06';
+  const b = allBeds().find(b => !occupied(b.key, idx(t))) || allBeds()[0];
+  return b ? b.key : '';
+}
+
+/* ---------- setup dialog ---------- */
+let draft = null;
+function openSetup() {
+  draft = JSON.parse(JSON.stringify(state.cabins));
+  renderSetup();
+  $('#setupDlg').showModal();
+}
+function renderSetup() {
+  const dlg = $('#setupDlg');
+  const rooms = draft.reduce((a, c) => a + c.rooms.length, 0), beds = draft.reduce((a, c) => a + c.rooms.reduce((x, r) => x + r.beds, 0), 0);
+  const step = (a, v) => `<span class="stepper"><button type="button" data-step="${a}" data-d="-1" aria-label="Færre">−</button><output>${v}</output><button type="button" data-step="${a}" data-d="1" aria-label="Flere">+</button></span>`;
+  let h = `<div class="dh1"><h2>Hytter, rom og senger</h2><button type="button" class="x" data-close aria-label="Lukk">×</button></div><div class="db">
+    <div class="setrow"><b>Antall hytter</b>${step('cabins', draft.length)}</div>`;
+  draft.forEach((c, ci) => {
+    h += `<div class="cabin-edit"><label class="f">Navn på hytte ${ci + 1}<input class="txt" data-name="${ci}" value="${esc(c.name)}"></label>
+      <div class="setrow"><b>Antall rom</b>${step('rooms:' + ci, c.rooms.length)}</div>`;
+    c.rooms.forEach((r, ri) => {
+      h += `<div class="room-edit"><input class="txt" data-rname="${ci}:${ri}" value="${esc(r.name)}" aria-label="Navn på rom"><span class="setrow" style="gap:8px"><span class="hint">Senger</span>${step('beds:' + ci + ':' + ri, r.beds)}</span></div>`;
+    });
+    h += '</div>';
+  });
+  h += `<div class="sum">Totalt: ${draft.length} hytter · ${rooms} rom · <b>${beds} senger</b></div></div>
+    <div class="df"><span class="sp"><button type="button" class="btn sm" data-export>Eksporter</button><button type="button" class="btn sm" data-import>Importer</button><button type="button" class="btn sm danger" data-reset>Tilbakestill til eksempel</button></span>
+    <button type="button" class="btn" data-close>Avbryt</button><button type="button" class="btn primary" data-savesetup>Lagre endringer</button></div>`;
+  dlg.innerHTML = h;
+}
+function setupStep(a, d) {
+  const [t, x, y] = a.split(':');
+  if (t === 'cabins') {
+    if (d > 0 && draft.length < 20) draft.push({ id: uid(), name: 'Hytte ' + (draft.length + 1), rooms: [{ id: uid(), name: 'Rom 1', beds: 2 }] });
+    if (d < 0 && draft.length > 1) draft.pop();
+  } else if (t === 'rooms') {
+    const c = draft[+x];
+    if (d > 0 && c.rooms.length < 12) c.rooms.push({ id: uid(), name: 'Rom ' + (c.rooms.length + 1), beds: 2 });
+    if (d < 0 && c.rooms.length > 1) c.rooms.pop();
+  } else if (t === 'beds') {
+    const r = draft[+x].rooms[+y]; r.beds = Math.min(12, Math.max(1, r.beds + d));
+  }
+  renderSetup();
+}
+function saveSetup() {
+  const keys = new Set(); draft.forEach(c => c.rooms.forEach(r => { for (let n = 0; n < r.beds; n++) keys.add(r.id + ':' + n); }));
+  draft.forEach(c => { c.name = c.name.trim() || 'Hytte'; c.rooms.forEach(r => r.name = r.name.trim() || 'Rom'); });
+  const lost = state.bookings.filter(b => !keys.has(b.bed));
+  if (lost.length && !confirm(`${lost.length} reservasjon(er) (${lost.map(b => b.guest).join(', ')}) ligger på senger som fjernes og blir slettet. Fortsette?`)) return;
+  state.cabins = draft; state.bookings = state.bookings.filter(b => keys.has(b.bed));
+  save(); $('#setupDlg').close(); render();
+}
+
+/* ---------- global events ---------- */
+document.addEventListener('click', e => {
+  const t = e.target.closest('button,[data-edit]'); if (!t) return;
+  const d = t.dataset;
+  if (d.action === 'new') return openBooking({ guest: '', bed: firstFreeBed(), start: '2027-08-06', end: '2027-08-08' });
+  if (d.action === 'setup') return openSetup();
+  if (d.view) { view = d.view; return render(); }
+  if (d.jump !== undefined) { const sc = $('.tl-scroll'); if (sc) sc.scrollTo({ left: Math.max(0, (+d.jump - (+d.jump ? 0 : 0)) * cellW()), behavior: 'smooth' }); return; }
+  if (d.edit) { const b = state.bookings.find(x => x.id === d.edit); if (b) openBooking({ ...b }); return; }
+  if (d.newbed) return openBooking({ guest: '', bed: d.newbed, start: '2027-08-06', end: '2027-08-08' });
+  if (t.hasAttribute('data-close')) return t.closest('dialog').close();
+  if (d.step) return setupStep(d.step, +d.d);
+  if (t.hasAttribute('data-savesetup')) return saveSetup();
+  if (t.hasAttribute('data-export')) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }));
+    a.download = 'efjord-stetind-reservasjoner.json'; a.click(); return;
+  }
+  if (t.hasAttribute('data-import')) return $('#importFile').click();
+  if (t.hasAttribute('data-reset') && confirm('Tilbakestille alt til eksempeldataene? Dine egne endringer går tapt.')) { state = seed(); save(); $('#setupDlg').close(); render(); }
+});
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'selDate' && t.value) { selDate = t.value; render(); const i = $('#selDate'); i && i.focus(); }
+  if (t.dataset.name !== undefined) draft[+t.dataset.name].name = t.value;
+  if (t.dataset.rname !== undefined) { const [c, r] = t.dataset.rname.split(':'); draft[+c].rooms[+r].name = t.value; }
+});
+$('#importFile').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  f.text().then(txt => {
+    try {
+      const s = JSON.parse(txt);
+      if (!Array.isArray(s.cabins) || !Array.isArray(s.bookings)) throw 0;
+      if (confirm('Erstatte nåværende data med den importerte filen?')) { state = s; save(); $('#setupDlg').close(); render(); }
+    } catch (err) { alert('Kunne ikke lese filen.'); }
+  });
+  e.target.value = '';
+});
+render();
+})();
+</script>
+</body>
+</html>
