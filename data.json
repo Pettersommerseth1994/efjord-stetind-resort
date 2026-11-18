@@ -2,24 +2,38 @@
  "cabins": [
   {
    "id": "c1",
-   "name": "Efjord",
+   "name": "Efjord1",
    "price": 600,
    "priceDouble": 900,
    "rooms": [
     {
      "id": "r1",
      "name": "Rom 1",
-     "beds": 4
+     "beds": 4,
+     "types": [
+      "s",
+      "s",
+      "s",
+      "s"
+     ]
     },
     {
      "id": "r2",
      "name": "Rom 2",
-     "beds": 2
+     "beds": 2,
+     "types": [
+      "s",
+      "s"
+     ]
     },
     {
      "id": "r3",
      "name": "Rom 3",
-     "beds": 2
+     "beds": 2,
+     "types": [
+      "s",
+      "s"
+     ]
     }
    ]
   },
@@ -32,12 +46,24 @@
     {
      "id": "r4",
      "name": "Rom 1",
-     "beds": 4
+     "beds": 4,
+     "types": [
+      "s",
+      "s",
+      "s",
+      "s"
+     ]
     },
     {
      "id": "r5",
      "name": "Rom 2",
-     "beds": 4
+     "beds": 4,
+     "types": [
+      "s",
+      "s",
+      "s",
+      "s"
+     ]
     }
    ]
   },
@@ -58,7 +84,11 @@
     {
      "id": "r7",
      "name": "Rom 2",
-     "beds": 2
+     "beds": 2,
+     "types": [
+      "s",
+      "s"
+     ]
     }
    ]
   }
