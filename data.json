@@ -138,5 +138,12 @@
    "start": "2027-08-05",
    "end": "2027-08-08"
   }
- ]
+ ],
+ "lock": {
+  "v": 1,
+  "salt": "TMd0HcUnkz4VCXa17+mO2A==",
+  "iv": "gp5upivZ7WyGlGD9",
+  "ct": "SWz6r7MS1w0LDRCCPYafQEHt4he1SEDvq0dwrCcCsh1u5Wp2uZ103OL3CWOCZ+MdF4DP+msnYBBws6FPHjhZYYl7GE51POiOfhEVo2TQ8g2UHD14sqPLlKRHC1RAeI5mYchECCcJ5EbvF5/J8w==",
+  "iter": 600000
+ }
 }
