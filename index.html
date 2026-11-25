@@ -598,7 +598,7 @@ function renderPay() {
     g.paid = g.stays.filter(isPaid).reduce((a, b) => a + stayCost(b, bm), 0);
     g.rest = g.sum - g.paid;
     return g;
-  }).sort((a, b) => b.rest - a.rest || b.sum - a.sum || a.name.localeCompare(b.name, 'nb'));
+  }).sort((a, b) => a.name.localeCompare(b.name, 'nb')); // fast rekkefølge – kortene flytter seg ikke når noe markeres som betalt
   const total = list.reduce((a, g) => a + g.sum, 0), paid = list.reduce((a, g) => a + g.paid, 0);
   const unpriced = state.cabins.filter(c => (hasType(c, false) && !price(c)) || (hasType(c, true) && !priceD(c))).map(c => c.name);
   let h = `<div class="paytop card"><div><div class="k">Gjenstår å betale</div><div class="v">${kr(total - paid)}</div></div>
