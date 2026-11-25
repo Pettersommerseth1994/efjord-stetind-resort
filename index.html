@@ -615,7 +615,7 @@ function renderPay() {
       h += `<div class="payline ${isPaid(b) ? 'paid' : ''}"><label class="chk" title="Marker som betalt"><input type="checkbox" data-paid="${b.id}" ${isPaid(b) ? 'checked' : ''}></label>
         <div class="pinfo" data-edit="${b.id}" role="button" tabindex="0"><b>${x ? esc(x.cabin.name) : '?'}</b> <span class="hint">${x ? esc(x.room.name) + ' · ' + bedName(x) : ''}</span><br><span class="hint">${fmt(b.start)} – ${fmt(b.end)} · ${n} ${n === 1 ? 'natt' : 'netter'}${rate ? ' × ' + rate : ''}</span></div><b>${kr(stayCost(b, bm))}</b></div>`;
     });
-    h += `<div style="padding-top:8px"><button class="btn sm" data-payall="${esc(g.key)}">${all ? 'Fjern betalt' : 'Marker alle som betalt'}</button></div></div></article>`;
+    h += '</div></article>';
   });
   $('#view').innerHTML = h + '</div>';
 }
@@ -796,8 +796,6 @@ document.addEventListener('click', e => {
   if (d.edit) { const b = state.bookings.find(x => x.id === d.edit); if (b) openBooking({ ...b }); return; }
   if (d.newbed) return openBooking({ guest: '', bed: d.newbed, start: '2027-08-06', end: '2027-08-08' });
   if (t.hasAttribute('data-close')) return t.closest('dialog').close();
-  if (d.payall !== undefined && !requireEdit()) return;
-  if (d.payall !== undefined) { const gs = state.bookings.filter(b => b.guest.toLowerCase() === d.payall); const all = gs.every(isPaid); gs.forEach(b => b.paid = !all); save(); return render(); }
   if (t.hasAttribute('data-addcabin')) return setupStep('cabins', 1);
   if (d.delcabin !== undefined) {
     const c = draft[+d.delcabin], keys = new Set(c.rooms.flatMap(r => roomSlots(r).map(sl => sl.key)));
