@@ -24,14 +24,12 @@ button,input,select{font:inherit;color:inherit;letter-spacing:inherit}
 .glass,.card,.cabin-card,.tl-scroll{background:var(--glass);backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);border:1px solid rgba(255,255,255,.75);box-shadow:var(--shadow)}
 
 /* Hero */
-.hero{position:relative;height:clamp(330px,46vw,470px);overflow:hidden}
-.hero .photo{position:absolute;inset:0;background:url(hero.jpg) center 38%/cover no-repeat;opacity:.92}
-.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.35) 0,rgba(255,255,255,0) 28%,rgba(242,242,244,0) 55%,var(--bg) 100%)}
+.hero{position:relative}
 .nav{position:relative;z-index:3;display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px;padding:8px 10px 8px 18px;border-radius:18px;flex-wrap:wrap}
 .nav img{height:40px;display:block}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
-.herotext{position:absolute;z-index:3;left:20px;right:20px;bottom:46px}
-.herotext .box{display:inline-block;padding:18px 26px 20px;border-radius:22px}
+.herotext{margin:30px 0 22px}
+.herotext .box{display:block}
 .herotext h1{margin:0;font-size:clamp(28px,5vw,52px);font-weight:500;letter-spacing:-.04em;line-height:1}
 .herotext p{margin:8px 0 0;color:var(--muted);font-size:15px}
 .btn{border:1px solid var(--line-s);background:rgba(255,255,255,.7);border-radius:12px;padding:9px 15px;cursor:pointer;font-weight:500;transition:.15s}
@@ -179,15 +177,13 @@ label.f input,label.f select,.txt{border:1px solid var(--line-s);border-radius:1
   .hero .wrap{padding-bottom:0}
   .t-long{display:none} .t-short{display:inline}
   /* hero + nav */
-  .hero{height:300px}
   .nav{flex-wrap:nowrap;margin-top:12px;padding:8px 8px 8px 14px;border-radius:16px}
   .nav img{height:24px}
   .navnew{display:none}
   .sync #syncTxt{display:none}
   .sync{padding:9px 11px}
   .actions{flex-wrap:nowrap}
-  .herotext{bottom:26px;left:14px;right:14px}
-  .herotext .box{padding:12px 18px 14px;border-radius:18px}
+  .herotext{margin:20px 0 16px}
   .herotext h1{font-size:34px}
   .herotext p{font-size:13px;margin-top:4px}
   /* floating CTA */
@@ -232,8 +228,7 @@ label.f input,label.f select,.txt{border:1px solid var(--line-s);border-radius:1
 </head>
 <body>
 <header class="hero">
-  <div class="photo" role="img" aria-label="Solnedgang over Stetinden og fjorden"></div>
-  <div class="wrap" style="position:relative;height:100%">
+  <div class="wrap" style="padding-bottom:0">
     <nav class="nav glass">
       <img src="logo.svg" alt="Efjord &amp; Stetind Resort">
       <div class="actions">
@@ -242,7 +237,7 @@ label.f input,label.f select,.txt{border:1px solid var(--line-s);border-radius:1
         <button class="btn primary navnew" data-action="new">+ Ny reservasjon</button>
       </div>
     </nav>
-    <div class="herotext"><div class="box glass"><h1>Romfordeling</h1><p>Juli og august 2027 · hvem bor hvor</p></div></div>
+    <div class="herotext"><div class="box"><h1>Romfordeling</h1><p>Juli og august 2027 · hvem bor hvor</p></div></div>
   </div>
 </header>
 
